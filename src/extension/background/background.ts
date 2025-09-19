@@ -2,13 +2,16 @@
  * Mosqit Extension Background Service Worker
  */
 
-;
+import { LogStorage } from '../storage/log-storage';
 
-
+interface LogMessage {
+  type: string;
+  data: Record<string, unknown>;
+}
 
 class BackgroundService {
-  private storage;
-  private connections<number, chrome.runtime.Port> = new Map();
+  private storage: LogStorage;
+  private connections: Map<number, chrome.runtime.Port> = new Map();
 
   constructor() {
     this.storage = new LogStorage();
@@ -17,10 +20,10 @@ class BackgroundService {
 
   private setupListeners() {
     // Listen for messages from content scripts
-    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    chrome.runtime.onMessage.addListener((message: LogMessage, sender, sendResponse) => {
       if (message.type === 'MOSQIT_LOG') {
         this.handleLog(message.data, sender.tab);
-        sendResponse({ success });
+        sendResponse({ success: true });
       }
       return true;
     });
@@ -58,7 +61,7 @@ class BackgroundService {
     });
   }
 
-  private async handleLog(logData<string, unknown>, tab?.tabs.Tab) {
+  private async handleLog(logData: Record<string, unknown>, tab?: chrome.tabs.Tab) {
     // Store log
     await this.storage.addLog(logData);
 
@@ -66,9 +69,9 @@ class BackgroundService {
     const enrichedLog = {
       ...logData,
       tab: {
-        id?.id,
-        title?.title,
-        url?.url,
+        id: tab?.id,
+        title: tab?.title,
+        url: tab?.url,
       },
     };
 
@@ -77,7 +80,7 @@ class BackgroundService {
       const port = this.connections.get(tab.id);
       port?.postMessage({
         type: 'NEW_LOG',
-        data,
+        data: enrichedLog,
       });
     }
 
@@ -87,44 +90,47 @@ class BackgroundService {
     }
   }
 
-  private handleDevToolsMessage(message: { type; data? }, tabId) {
+  private handleDevToolsMessage(message: { type: string; data?: unknown }, tabId: number) {
     switch (message.type) {
-      case 'GET_LOGS'.sendLogsToDevTools(tabId);
+      case 'GET_LOGS':
+        this.sendLogsToDevTools(tabId);
         break;
-      case 'CLEAR_LOGS'.clearLogs(tabId);
+      case 'CLEAR_LOGS':
+        this.clearLogs(tabId);
         break;
-      case 'EXPORT_LOGS'.exportLogs(tabId);
+      case 'EXPORT_LOGS':
+        this.exportLogs(tabId);
         break;
     }
   }
 
-  private async sendLogsToDevTools(tabId) {
+  private async sendLogsToDevTools(tabId: number) {
     const logs = await this.storage.getLogs(tabId);
     const port = this.connections.get(tabId);
 
     port?.postMessage({
       type: 'LOGS_DATA',
-      data,
+      data: logs,
     });
   }
 
-  private async clearLogs(tabId) {
+  private async clearLogs(tabId: number) {
     await this.storage.clearLogs(tabId);
     this.updateBadge(tabId, 0);
   }
 
-  private async exportLogs(tabId) {
+  private async exportLogs(tabId: number) {
     const logs = await this.storage.getLogs(tabId);
     const dataStr = JSON.stringify(logs, null, 2);
-    const dataUri = 'data/json;charset=utf-8,' + encodeURIComponent(dataStr);
+    const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
 
     chrome.downloads.download({
-      url,
+      url: dataUri,
       filename: `mosqit-logs-${Date.now()}.json`,
     });
   }
 
-  private async injectContentScript(tabId) {
+  private async injectContentScript(tabId: number) {
     try {
       await chrome.scripting.executeScript({
         target: { tabId },
@@ -135,17 +141,17 @@ class BackgroundService {
     }
   }
 
-  private async toggleLogger(tabId) {
+  private async toggleLogger(tabId: number) {
     chrome.tabs.sendMessage(tabId, {
       type: 'TOGGLE_LOGGER',
     });
   }
 
-  private async updateBadge(tabId, count?) {
+  private async updateBadge(tabId: number, count?: number) {
     const logCount = count ?? (await this.storage.getLogCount(tabId));
 
     chrome.action.setBadgeText({
-      text > 0 ? String(logCount) : '',
+      text: logCount > 0 ? String(logCount) : '',
       tabId,
     });
 

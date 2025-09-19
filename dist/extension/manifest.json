@@ -6,16 +6,28 @@
   "permissions": [
     "storage",
     "tabs",
-    "debugger"
+    "scripting",
+    "activeTab",
+    "downloads"
   ],
   "host_permissions": [
-    "http://localhost:3000/*",
-    "https://mosqit.vercel.app/*"
+    "<all_urls>"
   ],
   "background": {
-    "service_worker": "background.js",
-    "type": "module"
+    "service_worker": "background.js"
   },
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_start"
+    }
+  ],
+  "devtools_page": "devtools.html",
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
@@ -28,5 +40,15 @@
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
-  }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "content.js"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ]
 }

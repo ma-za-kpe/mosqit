@@ -516,7 +516,7 @@ export default function Home() {
           <header className="card" role="banner">
             <div className="logo" aria-label="Mosqit Logo">🦟</div>
             <h1 className="title" itemProp="name">Mosqit</h1>
-            <p className="subtitle" itemProp="description">AI-Powered Debugging Assistant for Chrome</p>
+            <p className="subtitle" itemProp="description">AI-Driven Frontend Debugging Chrome Extension</p>
             <meta itemProp="applicationCategory" content="DeveloperApplication" />
             <meta itemProp="operatingSystem" content="Chrome 127+" />
             <div itemProp="offers" itemScope itemType="https://schema.org/Offer">
@@ -536,11 +536,14 @@ export default function Home() {
           </header>
 
           <div className="card">
-            <h2 style={{ color: '#2d3748', marginBottom: '20px' }}>🚀 Transform Your Debugging Experience</h2>
+            <h2 style={{ color: '#2d3748', marginBottom: '20px' }}>🚀 Buzz Through Frontend Bugs with AI-Driven Intelligence</h2>
+            <p style={{ color: '#718096', lineHeight: '1.6', marginBottom: '20px' }}>
+              <strong>Mosqit</strong> revolutionizes frontend debugging by combining Android Logcat-inspired logging with Chrome&apos;s built-in AI APIs (Gemini Nano).
+              More than just error analysis - it provides pattern detection, framework-specific insights, and can even generate GitHub issues directly from DevTools!
+            </p>
             <p style={{ color: '#718096', lineHeight: '1.6' }}>
-              Mosqit brings Android Logcat-inspired intelligent error analysis directly to your Chrome DevTools.
-              Using Chrome&apos;s built-in Gemini Nano AI, get instant insights, root cause analysis, and fix suggestions -
-              all running locally on your device for maximum privacy and speed.
+              Experience &lt;100ms response times, comprehensive metadata capture, recurring error detection, and actionable fix suggestions -
+              all while maintaining complete privacy through on-device AI processing.
             </p>
 
             <div className="tech-stack">
@@ -789,6 +792,71 @@ console.warn("API response slow: 3.2s");
               <a href="https://github.com/ma-za-kpe/mosqit/issues" className="btn btn-secondary" target="_blank" rel="noopener noreferrer">🐛 Report Issues</a>
               <a href="https://github.com/ma-za-kpe/mosqit/pulls" className="btn btn-secondary" target="_blank" rel="noopener noreferrer">🔀 Submit PR</a>
               <a href="https://github.com/ma-za-kpe/mosqit/discussions" className="btn btn-secondary" target="_blank" rel="noopener noreferrer">💬 Discussions</a>
+            </div>
+          </div>
+
+          {/* Chrome AI Resources Section */}
+          <div className="card">
+            <h2 style={{ color: '#2d3748', marginBottom: '25px' }}>🔗 Chrome AI Developer Resources</h2>
+            <p style={{ color: '#718096', marginBottom: '25px' }}>
+              Join the Chrome Early Preview Program community and access official resources for building with Chrome&apos;s built-in AI:
+            </p>
+            <div className="features-grid">
+              <div className="feature-card">
+                <h3><span className="feature-icon">📚</span>Official API Docs</h3>
+                <p>Complete documentation for Chrome&apos;s built-in AI APIs including Writer, Prompt, and Summarizer APIs.</p>
+                <a
+                  href="https://developer.chrome.com/docs/ai/built-in-apis"
+                  className="btn btn-secondary"
+                  style={{ marginTop: '15px', display: 'inline-block' }}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  View API Docs →
+                </a>
+              </div>
+              <div className="feature-card">
+                <h3><span className="feature-icon">🗂️</span>EPP Docs Index</h3>
+                <p>Comprehensive index including multimodal and hybrid AI capabilities, experimental features, and advanced use cases.</p>
+                <a
+                  href="https://goo.gle/chrome-ai-dev-preview-index"
+                  className="btn btn-secondary"
+                  style={{ marginTop: '15px', display: 'inline-block' }}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Browse Index →
+                </a>
+              </div>
+              <div className="feature-card">
+                <h3><span className="feature-icon">💬</span>Discussion Forum</h3>
+                <p>Connect with the Chrome AI developer community, share ideas, get help, and provide feedback on the APIs.</p>
+                <a
+                  href="https://goo.gle/chrome-ai-dev-preview-discuss"
+                  className="btn btn-secondary"
+                  style={{ marginTop: '15px', display: 'inline-block' }}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Join Discussion →
+                </a>
+              </div>
+              <div className="feature-card">
+                <h3><span className="feature-icon">🎮</span>Discord Community</h3>
+                <p>Real-time chat with Chrome AI developers and enthusiasts. Get instant help and share your projects.</p>
+                <a
+                  href="https://goo.gle/chrome-ai-dev-preview-gdc-discord"
+                  className="btn btn-secondary"
+                  style={{ marginTop: '15px', display: 'inline-block' }}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Join Discord →
+                </a>
+              </div>
+            </div>
+            <div className="challenge-banner" style={{ marginTop: '30px', background: 'linear-gradient(135deg, #4285F4 0%, #EA4335 100%)' }}>
+              <strong>🏆 Building for Chrome Built-in AI Challenge?</strong> These resources are essential for maximizing your use of Chrome&apos;s AI capabilities!
             </div>
           </div>
 

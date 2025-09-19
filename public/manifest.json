@@ -1,7 +1,7 @@
 {
-  "name": "Mosqit - AI-Powered Debugging Assistant",
+  "name": "Mosqit - AI-Driven Frontend Debugging Extension",
   "short_name": "Mosqit",
-  "description": "Debug smarter with Chrome's built-in AI. Instant error analysis, pattern detection, and fix suggestions.",
+  "description": "Buzz through frontend bugs—AI-driven GitHub issues from DevTools. Real-time analysis, pattern detection, framework insights.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#667eea",

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
+import { Analytics } from "@vercel/analytics/react";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -21,8 +22,8 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
-  title: "Mosqit - AI-Powered Debugging Assistant for Chrome | Debug Smarter with Gemini Nano",
-  description: "Transform your debugging with Mosqit - Chrome extension that uses built-in AI (Gemini Nano) to analyze console outputs, detect patterns, and provide instant fix suggestions. 100% on-device privacy. Debug JavaScript, React, Vue, Angular errors faster.",
+  title: "Mosqit - AI-Driven Frontend Debugging Chrome Extension | Buzz Through Bugs with Gemini Nano",
+  description: "Revolutionize frontend debugging with Mosqit - Chrome extension combining Logcat-inspired logging with AI. Real-time error analysis, pattern detection, framework-specific insights, and GitHub issue generation from DevTools. <100ms response, 100% on-device privacy.",
   keywords: "chrome extension, debugging tool, ai debugging, gemini nano, javascript debugger, console log analyzer, error analysis, chrome devtools, react debugging, vue debugging, angular debugging, typescript debugging, web development tools, chrome ai api, writer api, on-device ai, privacy-focused debugging, logcat for web, pattern detection, error tracking, chrome built-in ai challenge 2025",
   authors: [{ name: "Mosqit Team" }],
   creator: "Mosqit",
@@ -48,8 +49,8 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_US',
     url: 'https://mosqit.dev',
-    title: 'Mosqit - AI-Powered Debugging Assistant for Chrome',
-    description: 'Debug smarter with Chrome\'s built-in AI. Instant error analysis, pattern detection, and fix suggestions - all on-device for complete privacy.',
+    title: 'Mosqit - AI-Driven Frontend Debugging Chrome Extension',
+    description: 'Buzz through frontend bugs with AI-driven GitHub issues from DevTools. Real-time analysis, pattern detection, and framework-specific insights - all on-device for complete privacy.',
     siteName: 'Mosqit',
     images: [
       {
@@ -63,8 +64,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Mosqit - AI-Powered Debugging for Chrome',
-    description: 'Debug smarter with Chrome\'s built-in AI. Instant error analysis & fix suggestions.',
+    title: 'Mosqit - AI-Driven Frontend Debugging Extension',
+    description: 'Buzz through bugs with AI-driven analysis, pattern detection, and GitHub issue generation from DevTools.',
     creator: '@mosqit_dev',
     images: ['https://mosqit.dev/twitter-image.svg'],
   },
@@ -285,6 +286,7 @@ export default function RootLayout({
         <main id="main-content" itemProp="mainEntity">
           {children}
         </main>
+        <Analytics />
       </body>
     </html>
   );

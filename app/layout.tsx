@@ -53,10 +53,11 @@ export const metadata: Metadata = {
     siteName: 'Mosqit',
     images: [
       {
-        url: 'https://mosqit.dev/og-image.png',
+        url: 'https://mosqit.dev/og-image.svg',
         width: 1200,
         height: 630,
         alt: 'Mosqit - AI-Powered Debugging Assistant',
+        type: 'image/svg+xml',
       },
     ],
   },
@@ -65,7 +66,7 @@ export const metadata: Metadata = {
     title: 'Mosqit - AI-Powered Debugging for Chrome',
     description: 'Debug smarter with Chrome\'s built-in AI. Instant error analysis & fix suggestions.',
     creator: '@mosqit_dev',
-    images: ['https://mosqit.dev/twitter-image.png'],
+    images: ['https://mosqit.dev/twitter-image.svg'],
   },
   verification: {
     google: 'google-verification-code',
@@ -238,9 +239,10 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
 
         {/* Favicon and Icons */}
-        <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" href="/icon.svg" type="image/svg+xml" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <link rel="icon" href="/icon-32.svg" sizes="32x32" type="image/svg+xml" />
+        <link rel="icon" href="/icon-16.svg" sizes="16x16" type="image/svg+xml" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.svg" />
         <link rel="manifest" href="/manifest.json" />
 
         {/* Additional AEO Tags for AI Understanding */}

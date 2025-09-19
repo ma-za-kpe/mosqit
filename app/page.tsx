@@ -212,6 +212,191 @@ export default function Home() {
         .footer-links a:hover {
           color: #5a67d8;
         }
+
+        /* Mobile Responsive Styles */
+        @media (max-width: 768px) {
+          .container {
+            padding: 10px;
+          }
+          .card {
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 15px;
+          }
+          .logo {
+            font-size: 3rem;
+          }
+          .title {
+            font-size: 1.8rem;
+          }
+          .subtitle {
+            font-size: 1rem;
+          }
+          .badges {
+            gap: 10px;
+          }
+          .badge {
+            padding: 6px 12px;
+            font-size: 0.8rem;
+          }
+          .challenge-banner {
+            padding: 15px;
+            font-size: 0.9rem;
+          }
+          .features-grid {
+            grid-template-columns: 1fr;
+            gap: 15px;
+          }
+          .feature-card {
+            padding: 20px;
+          }
+          .feature-card h3 {
+            font-size: 1.1rem;
+          }
+          .button-group {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 15px;
+          }
+          .btn {
+            padding: 12px 24px;
+            font-size: 1rem;
+            text-align: center;
+          }
+          .tech-stack {
+            gap: 10px;
+          }
+          .tech-badge {
+            padding: 8px 16px;
+            font-size: 0.9rem;
+          }
+          .installation-steps {
+            padding: 15px;
+          }
+          .installation-steps ol {
+            padding-left: 15px;
+          }
+          .installation-steps li {
+            font-size: 0.95rem;
+          }
+          .code-preview {
+            padding: 15px;
+            font-size: 0.85rem;
+          }
+          .footer-links {
+            gap: 20px;
+          }
+          .footer-links a {
+            font-size: 0.9rem;
+          }
+          h2 {
+            font-size: 1.5rem !important;
+          }
+          p {
+            font-size: 0.95rem;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .container {
+            padding: 5px;
+          }
+          .card {
+            padding: 15px;
+            border-radius: 12px;
+          }
+          .logo {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+          }
+          .title {
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+          }
+          .subtitle {
+            font-size: 0.9rem;
+            margin-bottom: 15px;
+          }
+          .badge {
+            padding: 5px 10px;
+            font-size: 0.75rem;
+          }
+          .challenge-banner {
+            padding: 12px;
+            font-size: 0.85rem;
+            border-radius: 10px;
+          }
+          .feature-card {
+            padding: 15px;
+            border-radius: 12px;
+          }
+          .feature-card h3 {
+            font-size: 1rem;
+            margin-bottom: 8px;
+          }
+          .feature-icon {
+            font-size: 1.2rem;
+          }
+          .feature-card p {
+            font-size: 0.9rem;
+          }
+          .btn {
+            padding: 10px 20px;
+            font-size: 0.95rem;
+            border-radius: 25px;
+          }
+          .tech-badge {
+            padding: 6px 12px;
+            font-size: 0.85rem;
+          }
+          .installation-steps {
+            padding: 12px;
+            font-size: 0.9rem;
+          }
+          .installation-steps code {
+            font-size: 0.8em;
+            padding: 1px 6px;
+          }
+          .code-preview {
+            padding: 12px;
+            font-size: 0.75rem;
+            border-radius: 8px;
+          }
+          h2 {
+            font-size: 1.3rem !important;
+            margin-bottom: 15px !important;
+          }
+          p {
+            font-size: 0.9rem;
+            line-height: 1.5;
+          }
+          .footer-links {
+            flex-direction: column;
+            gap: 10px;
+            text-align: center;
+          }
+        }
+
+        /* Improved text readability on mobile */
+        @media (max-width: 768px) {
+          body {
+            -webkit-text-size-adjust: 100%;
+            text-size-adjust: 100%;
+          }
+        }
+
+        /* Landscape mode adjustments */
+        @media (max-width: 768px) and (orientation: landscape) {
+          .logo {
+            font-size: 2rem;
+          }
+          .title {
+            font-size: 1.5rem;
+          }
+          .card {
+            padding: 15px;
+          }
+        }
       `}</style>
 
       <div className="gradient-bg" itemScope itemType="https://schema.org/SoftwareApplication">
@@ -222,9 +407,10 @@ export default function Home() {
             <p className="subtitle" itemProp="description">AI-Powered Debugging Assistant for Chrome</p>
             <meta itemProp="applicationCategory" content="DeveloperApplication" />
             <meta itemProp="operatingSystem" content="Chrome 127+" />
-            <meta itemProp="offers" itemScope itemType="https://schema.org/Offer" />
-            <meta itemProp="price" content="0" />
-            <meta itemProp="priceCurrency" content="USD" />
+            <div itemProp="offers" itemScope itemType="https://schema.org/Offer">
+              <meta itemProp="price" content="0" />
+              <meta itemProp="priceCurrency" content="USD" />
+            </div>
             <div className="badges">
               <span className="badge highlight">🏆 Chrome Built-in AI Challenge 2025</span>
               <span className="badge">🤖 Gemini Nano Powered</span>
@@ -235,7 +421,7 @@ export default function Home() {
             <div className="challenge-banner">
               Built for the Google Chrome Built-in AI Challenge 2025 • Deadline: October 31, 2025
             </div>
-          </div>
+          </header>
 
           <div className="card">
             <h2 style={{ color: '#2d3748', marginBottom: '20px' }}>🚀 Transform Your Debugging Experience</h2>
@@ -418,12 +604,12 @@ console.warn("API response slow: 3.2s");
               <div className="feature-card" style={{ opacity: 0.8 }}>
                 <h3><span className="feature-icon">📱</span> Mobile Dashboard</h3>
                 <p>Responsive web dashboard for viewing and managing logs on mobile devices. Real-time sync across devices.</p>
-                <div style={{ marginTop: '10px', fontSize: '0.9em', color: '#a0aec0' }}>🚧 Planned Q2 2025</div>
+                <div style={{ marginTop: '10px', fontSize: '0.9em', color: '#a0aec0' }}>🚧 Coming Soon</div>
               </div>
               <div className="feature-card" style={{ opacity: 0.8 }}>
                 <h3><span className="feature-icon">🌍</span> Multi-Language Support</h3>
                 <p>Localized debugging insights in 5+ languages using Chrome Translator API. Technical terms preserved.</p>
-                <div style={{ marginTop: '10px', fontSize: '0.9em', color: '#a0aec0' }}>🚧 Planned Q2 2025</div>
+                <div style={{ marginTop: '10px', fontSize: '0.9em', color: '#a0aec0' }}>🚧 Coming Soon</div>
               </div>
               <div className="feature-card" style={{ opacity: 0.8 }}>
                 <h3><span className="feature-icon">👥</span> Team Collaboration</h3>

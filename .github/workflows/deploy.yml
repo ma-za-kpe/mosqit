@@ -1,0 +1,249 @@
+name: Mosqit CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    name: 🔍 Lint & Test
+
+    steps:
+      - name: 🔥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: 🔍 Run ESLint
+        run: npm run lint
+
+      - name: 🧪 Run Tests
+        run: npm test
+        if: ${{ always() }}
+
+      - name: 🏗️ Build Dashboard
+        run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
+
+      - name: 🎯 Build Chrome Extension
+        run: npm run build:extension
+
+      - name: 📊 Check Bundle Size
+        run: npm run analyze
+        if: github.event_name == 'pull_request'
+
+  deploy-develop:
+    needs: lint-and-test
+    runs-on: ubuntu-latest
+    name: 🚀 Deploy to Development
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+    steps:
+      - name: 🔥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: 🚀 Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: 🌍 Pull Vercel Environment Information
+        run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: 🏗️ Build Project Artifacts
+        run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: 🚢 Deploy to Development
+        run: |
+          DEPLOYMENT_URL=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }})
+          echo "DEPLOYMENT_URL=$DEPLOYMENT_URL" >> $GITHUB_ENV
+
+      - name: 💬 Comment PR with Preview URL
+        uses: actions/github-script@v7
+        if: github.event_name == 'pull_request'
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `🚀 **Mosqit Dashboard Preview Deployed!**\n\n🌍 Preview: ${process.env.DEPLOYMENT_URL}\n\n📱 Test the PWA on mobile devices\n🔍 Check DevTools integration\n🎯 Verify Chrome AI APIs`
+            })
+
+  deploy-production:
+    needs: lint-and-test
+    runs-on: ubuntu-latest
+    name: 🌟 Deploy to Production
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+    steps:
+      - name: 🔥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: 🚀 Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: 🌍 Pull Vercel Environment Information
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: 🏗️ Build Project Artifacts
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: 🚢 Deploy to Production
+        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: ✅ Production Deployment Success
+        run: |
+          echo "🎉 Mosqit Dashboard deployed to production!"
+          echo "🌍 Live at: https://mosqit.vercel.app"
+          echo "🦟 Chrome Extension ready for hackathon!"
+
+  build-extension:
+    needs: lint-and-test
+    runs-on: ubuntu-latest
+    name: 📦 Build & Package Extension
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: 🔥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: 🎯 Build Chrome Extension
+        run: npm run build:extension:prod
+
+      - name: 📦 Package Extension
+        run: npm run package:extension
+
+      - name: 📤 Upload Extension Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mosqit-extension-${{ github.sha }}
+          path: dist/mosqit-extension-*.zip
+
+      - name: 📊 Extension Size Report
+        run: |
+          echo "📦 Extension Package Info:"
+          ls -lh dist/*.zip
+          unzip -l dist/mosqit-extension-*.zip | tail -1
+
+  release:
+    needs: [deploy-production, build-extension]
+    runs-on: ubuntu-latest
+    name: 🎉 Create Release
+    if: github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[release]')
+
+    steps:
+      - name: 🔥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📥 Download Extension Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: mosqit-extension-${{ github.sha }}
+
+      - name: 🏷️ Get Version
+        id: version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: 🎉 Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.version.outputs.VERSION }}
+          name: Mosqit v${{ steps.version.outputs.VERSION }}
+          body: |
+            ## 🦟 Mosqit Chrome Extension Release
+
+            ### ✨ What's New
+            - Chrome AI APIs integration (Gemini Nano)
+            - DevTools DOM Preview screenshots
+            - AI-powered GitHub issue generation
+            - Offline-first architecture
+            - Mobile dashboard support
+
+            ### 📦 Installation
+            1. Download the extension ZIP file below
+            2. Open Chrome Canary with flags: `--enable-experimental-web-platform-features`
+            3. Navigate to `chrome://extensions/`
+            4. Enable Developer Mode
+            5. Drag and drop the ZIP file to install
+
+            ### 🌍 Live Dashboard
+            Visit: [https://mosqit.vercel.app](https://mosqit.vercel.app)
+
+            ### 🏆 Chrome Built-in AI Challenge 2025
+            This release is our submission for the Google Chrome Built-in AI Challenge 2025
+
+            ---
+            **Full Changelog**: https://github.com/${{ github.repository }}/commits/v${{ steps.version.outputs.VERSION }}
+          files: |
+            mosqit-extension-*.zip
+          draft: false
+          prerelease: false
+
+  notify:
+    needs: [deploy-production, build-extension]
+    runs-on: ubuntu-latest
+    name: 📢 Notify Team
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: 🔔 Send Success Notification
+        run: |
+          echo "✅ Deployment successful!"
+          echo "📍 Dashboard: https://mosqit.vercel.app"
+          echo "🎯 Extension: Built and packaged"
+          echo "📅 Timestamp: $(date)"
+
+      - name: 📊 Deployment Summary
+        run: |
+          echo "## 📊 Deployment Summary"
+          echo "- Branch: ${{ github.ref_name }}"
+          echo "- Commit: ${{ github.sha }}"
+          echo "- Author: ${{ github.actor }}"
+          echo "- Message: ${{ github.event.head_commit.message }}"

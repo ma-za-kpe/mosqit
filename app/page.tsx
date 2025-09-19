@@ -214,12 +214,17 @@ export default function Home() {
         }
       `}</style>
 
-      <div className="gradient-bg">
+      <div className="gradient-bg" itemScope itemType="https://schema.org/SoftwareApplication">
         <div className="container">
-          <div className="card">
-            <div className="logo">🦟</div>
-            <h1 className="title">Mosqit</h1>
-            <p className="subtitle">AI-Powered Debugging Assistant for Chrome</p>
+          <header className="card" role="banner">
+            <div className="logo" aria-label="Mosqit Logo">🦟</div>
+            <h1 className="title" itemProp="name">Mosqit</h1>
+            <p className="subtitle" itemProp="description">AI-Powered Debugging Assistant for Chrome</p>
+            <meta itemProp="applicationCategory" content="DeveloperApplication" />
+            <meta itemProp="operatingSystem" content="Chrome 127+" />
+            <meta itemProp="offers" itemScope itemType="https://schema.org/Offer" />
+            <meta itemProp="price" content="0" />
+            <meta itemProp="priceCurrency" content="USD" />
             <div className="badges">
               <span className="badge highlight">🏆 Chrome Built-in AI Challenge 2025</span>
               <span className="badge">🤖 Gemini Nano Powered</span>

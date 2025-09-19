@@ -7,6 +7,15 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org)
 [![Manifest V3](https://img.shields.io/badge/Manifest-V3-green?style=for-the-badge&logo=google-chrome)](https://developer.chrome.com/docs/extensions/develop/migrate/what-is-mv3)
 
+<div align="center">
+
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Support%20Development-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/mosqit)
+[![GitHub Sponsors](https://img.shields.io/badge/Sponsor%20on%20GitHub-❤️-EA4AAA?style=for-the-badge&logo=github-sponsors)](https://github.com/sponsors/ma-za-kpe)
+
+*Mosqit is free and open source forever. If you find it helpful, consider supporting the development!*
+
+</div>
+
 ## 🎯 Project Overview
 
 **Mosqit** revolutionizes frontend debugging by combining Android Logcat-inspired logging with Chrome's built-in AI APIs (Gemini Nano). It provides intelligent error analysis, pattern detection, and actionable fix suggestions directly in your browser—all while maintaining privacy through on-device AI processing.

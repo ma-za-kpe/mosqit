@@ -489,6 +489,62 @@ console.warn("API response slow: 3.2s");
             </div>
           </div>
 
+          <div className="card" style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
+            <h2 style={{ color: 'white', marginBottom: '20px', textAlign: 'center' }}>☕ Support Development</h2>
+            <p style={{ color: 'rgba(255, 255, 255, 0.9)', marginBottom: '30px', textAlign: 'center', fontSize: '1.1rem' }}>
+              Mosqit is free and open source forever. If you find it helpful, consider supporting the development!
+            </p>
+            <div style={{ textAlign: 'center' }}>
+              <p style={{ color: 'rgba(255, 255, 255, 0.9)', marginBottom: '20px' }}>
+                Your support helps us:
+              </p>
+              <ul style={{ color: 'rgba(255, 255, 255, 0.9)', listStyle: 'none', padding: 0, marginBottom: '30px' }}>
+                <li style={{ marginBottom: '10px' }}>✨ Add new features faster</li>
+                <li style={{ marginBottom: '10px' }}>🐛 Fix bugs and improve performance</li>
+                <li style={{ marginBottom: '10px' }}>📚 Create better documentation</li>
+                <li style={{ marginBottom: '10px' }}>🌍 Add support for more languages</li>
+                <li style={{ marginBottom: '10px' }}>⚡ Keep the project maintained and updated</li>
+              </ul>
+              <div className="button-group" style={{ justifyContent: 'center' }}>
+                <a
+                  href="https://www.buymeacoffee.com/mosqit"
+                  className="btn"
+                  style={{
+                    background: '#FFDD00',
+                    color: '#000000',
+                    padding: '15px 30px',
+                    fontSize: '1.1rem',
+                    fontWeight: 'bold',
+                    boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)'
+                  }}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  ☕ Buy Me a Coffee
+                </a>
+                <a
+                  href="https://github.com/sponsors/ma-za-kpe"
+                  className="btn"
+                  style={{
+                    background: 'white',
+                    color: '#24292e',
+                    padding: '15px 30px',
+                    fontSize: '1.1rem',
+                    fontWeight: 'bold',
+                    border: '2px solid white'
+                  }}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  ❤️ GitHub Sponsors
+                </a>
+              </div>
+              <p style={{ color: 'rgba(255, 255, 255, 0.7)', marginTop: '20px', fontSize: '0.9rem' }}>
+                100% optional - Mosqit will always be free and open source!
+              </p>
+            </div>
+          </div>
+
           <div className="card" style={{ textAlign: 'center' }}>
             <p><strong>Mosqit</strong> - Built with ❤️ for the Chrome Built-in AI Challenge 2025</p>
             <div className="footer-links">

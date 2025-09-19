@@ -260,28 +260,87 @@ export default function Home() {
             <div className="features-grid">
               <div className="feature-card">
                 <h3><span className="feature-icon">🤖</span> AI-Powered Analysis</h3>
-                <p>Leverages Chrome&apos;s built-in Gemini Nano model for intelligent debugging insights without external servers.</p>
+                <p>Leverages Chrome&apos;s built-in Gemini Nano model with Writer API for intelligent debugging insights - completely on-device.</p>
               </div>
               <div className="feature-card">
-                <h3><span className="feature-icon">🔍</span> Universal Debugging</h3>
-                <p>Analyzes all log types - errors, warnings, performance issues, network problems, and general debug output.</p>
-              </div>
-              <div className="feature-card">
-                <h3><span className="feature-icon">⚡</span> Real-Time Capture</h3>
-                <p>Automatically intercepts all console outputs and enhances them with contextual AI insights.</p>
-              </div>
-              <div className="feature-card">
-                <h3><span className="feature-icon">🔐</span> 100% Private</h3>
-                <p>All AI processing happens on-device. Your code and debugging data never leave your machine.</p>
+                <h3><span className="feature-icon">🎯</span> Universal Debugging</h3>
+                <p>Analyzes ALL console outputs - not just errors. Handles logs, warnings, performance issues, network problems, state changes, and debug traces.</p>
               </div>
               <div className="feature-card">
                 <h3><span className="feature-icon">📊</span> Pattern Detection</h3>
-                <p>Identifies recurring issues, performance bottlenecks, and systemic problems in your codebase.</p>
+                <p>Automatically identifies recurring errors and issues. Tracks patterns over time to spot systemic problems in your codebase.</p>
               </div>
               <div className="feature-card">
-                <h3><span className="feature-icon">🎯</span> Actionable Insights</h3>
-                <p>Get specific fix suggestions, best practices, and next debugging steps for any scenario.</p>
+                <h3><span className="feature-icon">🛠️</span> DevTools Panel</h3>
+                <p>Custom Mosqit panel in Chrome DevTools with Logcat-inspired UI. Real-time log streaming with color-coded severity levels.</p>
               </div>
+              <div className="feature-card">
+                <h3><span className="feature-icon">⚡</span> Smart Fallback</h3>
+                <p>40+ built-in debugging patterns ensure you get helpful insights even without AI. Works offline and on non-GPU machines.</p>
+              </div>
+              <div className="feature-card">
+                <h3><span className="feature-icon">🔐</span> 100% Private</h3>
+                <p>All processing happens on-device using Chrome&apos;s local Gemini Nano. Your code and logs never leave your machine.</p>
+              </div>
+              <div className="feature-card">
+                <h3><span className="feature-icon">🎨</span> Context-Aware</h3>
+                <p>Captures DOM state, dependencies, stack traces, and user interactions. AI considers full context for better insights.</p>
+              </div>
+              <div className="feature-card">
+                <h3><span className="feature-icon">💡</span> Actionable Fixes</h3>
+                <p>Get specific fix suggestions, code examples, and next debugging steps. Not just what&apos;s wrong, but how to fix it.</p>
+              </div>
+              <div className="feature-card">
+                <h3><span className="feature-icon">🚀</span> Multi-API Strategy</h3>
+                <p>Uses Writer API for structured insights, Prompt API for complex explanations. Plans for Summarizer and Rewriter APIs.</p>
+              </div>
+              <div className="feature-card">
+                <h3><span className="feature-icon">🧪</span> Comprehensive Testing</h3>
+                <p>50+ test scenarios included. Test all Chrome AI APIs, error types, and debugging scenarios with one click.</p>
+              </div>
+              <div className="feature-card">
+                <h3><span className="feature-icon">📦</span> Easy Setup</h3>
+                <p>5-minute installation. Works with any website or web app. No code changes required in your application.</p>
+              </div>
+              <div className="feature-card">
+                <h3><span className="feature-icon">🌐</span> Framework Agnostic</h3>
+                <p>Works with React, Vue, Angular, Svelte, or vanilla JavaScript. Automatically detects frameworks and dependencies.</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="card">
+            <h2 style={{ color: '#2d3748', marginBottom: '20px' }}>🔄 How Mosqit Works</h2>
+            <div style={{ color: '#718096', lineHeight: '1.8', fontSize: '1.1rem' }}>
+              <p style={{ marginBottom: '20px' }}>
+                <strong>1. Console Interception:</strong> Mosqit overrides ALL console methods (log, warn, error, info, debug) to capture every debugging output in your application.
+              </p>
+              <p style={{ marginBottom: '20px' }}>
+                <strong>2. Context Capture:</strong> For each log, we capture file location, line numbers, stack traces, DOM state, dependencies, and user interactions.
+              </p>
+              <p style={{ marginBottom: '20px' }}>
+                <strong>3. AI Analysis:</strong> Chrome&apos;s local Gemini Nano model (Writer API) analyzes the output and context to provide debugging insights.
+              </p>
+              <p style={{ marginBottom: '20px' }}>
+                <strong>4. Pattern Detection:</strong> Recurring issues are automatically identified and tracked over time.
+              </p>
+              <p style={{ marginBottom: '20px' }}>
+                <strong>5. DevTools Display:</strong> All enhanced logs appear in the custom Mosqit panel in Chrome DevTools with AI insights.
+              </p>
+            </div>
+
+            <div className="code-preview" style={{ marginTop: '30px' }}>
+              <pre>{`// Before Mosqit:
+console.error("Cannot read property 'name' of null");
+> TypeError: Cannot read property 'name' of null
+
+// With Mosqit AI:
+console.error("Cannot read property 'name' of null");
+> TypeError: Cannot read property 'name' of null
+> 🔴 Null reference at UserProfile.js:42
+> 💡 Root cause: Object not initialized before property access
+> ✅ Fix: Add null check: user?.name || 'Default Name'
+> 📚 Best practice: Use optional chaining for nested properties`}</pre>
             </div>
           </div>
 

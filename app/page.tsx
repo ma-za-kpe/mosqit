@@ -397,7 +397,119 @@ export default function Home() {
             padding: 15px;
           }
         }
+
+        /* Under Construction Badge */
+        .construction-badge {
+          position: fixed;
+          top: 0;
+          right: 0;
+          width: 200px;
+          height: 200px;
+          overflow: hidden;
+          z-index: 9999;
+          pointer-events: none;
+        }
+
+        .construction-ribbon {
+          position: absolute;
+          top: 50px;
+          right: -50px;
+          width: 280px;
+          height: 50px;
+          background: linear-gradient(135deg, #FFB800 0%, #FF6B00 100%);
+          transform: rotate(45deg);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+          pointer-events: auto;
+          cursor: default;
+        }
+
+        .construction-text {
+          color: white;
+          font-weight: bold;
+          font-size: 14px;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .construction-icon {
+          font-size: 18px;
+          animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+          0%, 100% {
+            transform: scale(1);
+          }
+          50% {
+            transform: scale(1.1);
+          }
+        }
+
+        /* Mobile adjustments for construction badge */
+        @media (max-width: 768px) {
+          .construction-badge {
+            width: 150px;
+            height: 150px;
+          }
+
+          .construction-ribbon {
+            top: 35px;
+            right: -40px;
+            width: 200px;
+            height: 35px;
+          }
+
+          .construction-text {
+            font-size: 11px;
+            gap: 5px;
+          }
+
+          .construction-icon {
+            font-size: 14px;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .construction-badge {
+            width: 120px;
+            height: 120px;
+          }
+
+          .construction-ribbon {
+            top: 28px;
+            right: -35px;
+            width: 160px;
+            height: 28px;
+          }
+
+          .construction-text {
+            font-size: 9px;
+            letter-spacing: 0.5px;
+          }
+
+          .construction-icon {
+            font-size: 12px;
+          }
+        }
       `}</style>
+
+      {/* Under Construction Badge */}
+      <div className="construction-badge" aria-label="Under Construction">
+        <div className="construction-ribbon">
+          <span className="construction-text">
+            <span className="construction-icon">🚧</span>
+            Under Construction
+            <span className="construction-icon">🔨</span>
+          </span>
+        </div>
+      </div>
 
       <div className="gradient-bg" itemScope itemType="https://schema.org/SoftwareApplication">
         <div className="container">

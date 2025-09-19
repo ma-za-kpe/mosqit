@@ -557,7 +557,25 @@ export default function Home() {
             <div className="button-group">
               <a href="/test/test-logger.html" className="btn btn-primary">🧪 Try Demo</a>
               <a href="https://github.com/ma-za-kpe/mosqit" className="btn btn-github" target="_blank" rel="noopener noreferrer">⭐ Star on GitHub</a>
-              <a href="#installation" className="btn btn-secondary">📦 Install Extension</a>
+              <button
+                className="btn btn-secondary"
+                style={{ cursor: 'not-allowed', opacity: 0.7, position: 'relative' }}
+                disabled
+                title="Extension coming soon to Chrome Web Store!"
+              >
+                📦 Install Extension
+                <span style={{
+                  position: 'absolute',
+                  top: '-10px',
+                  right: '-10px',
+                  background: 'linear-gradient(135deg, #FFB800 0%, #FF6B00 100%)',
+                  color: 'white',
+                  fontSize: '10px',
+                  padding: '2px 6px',
+                  borderRadius: '10px',
+                  fontWeight: 'bold'
+                }}>SOON</span>
+              </button>
             </div>
           </div>
 
@@ -598,7 +616,7 @@ export default function Home() {
               </div>
               <div className="feature-card">
                 <h3><span className="feature-icon">🚀</span> Multi-API Strategy</h3>
-                <p>Uses Writer API for structured insights, Prompt API for complex explanations. Plans for Summarizer and Rewriter APIs.</p>
+                <p>Uses Writer API for structured insights, Prompt API for complex analysis, and Summarizer API for pattern detection across multiple errors.</p>
               </div>
               <div className="feature-card">
                 <h3><span className="feature-icon">🧪</span> Comprehensive Testing</h3>
@@ -652,6 +670,26 @@ console.error("Cannot read property 'name' of null");
 
           <div className="card" id="installation">
             <h2 style={{ color: '#2d3748', marginBottom: '20px' }}>🛠️ Installation & Setup</h2>
+
+            <div className="challenge-banner" style={{
+              marginBottom: '25px',
+              background: 'linear-gradient(135deg, #FFB800 0%, #FF6B00 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '10px'
+            }}>
+              <span style={{ fontSize: '20px' }}>🚧</span>
+              <div>
+                <strong>Chrome Web Store submission in progress!</strong>
+                <br />
+                <span style={{ fontSize: '0.9em', opacity: 0.95 }}>
+                  For now, you can build from source or try the demo while we await approval.
+                </span>
+              </div>
+              <span style={{ fontSize: '20px' }}>🚀</span>
+            </div>
+
             <div className="installation-steps">
               <ol>
                 <li><strong>Enable Chrome AI:</strong> Navigate to <code>chrome://flags</code> and enable:

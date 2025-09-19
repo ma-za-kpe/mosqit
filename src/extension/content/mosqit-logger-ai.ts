@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Mosqit Logger - Enhanced with Chrome AI (Writer API)
  * Logcat-inspired debugging with real AI analysis
@@ -60,17 +61,17 @@ class MosqitLoggerAI {
 
   private async initializeAI() {
     // Check for Writer API (EPP feature, best for structured output)
-    if (typeof Writer !== 'undefined') {
+    if (typeof Writer !== 'undefined' && Writer !== null) {
       try {
-        const availability = await Writer.availability({ outputLanguage: 'en' });
+        const availability = await (Writer as any).availability({ outputLanguage: 'en' });
 
         if (availability === 'available') {
-          this.writerSession = await Writer.create({
+          this.writerSession = await (Writer as any).create({
             outputLanguage: 'en',
             tone: 'neutral',
             format: 'plain-text',
             length: 'short',
-            sharedContext: 'You are Mosqit, a debugging assistant. Analyze JavaScript errors with Logcat-style precision. Be concise and specific.'
+            sharedContext: 'You are Mosqit, an intelligent debugging assistant. Analyze any log output, bug, performance issue, warning, or unexpected behavior. Provide actionable insights for debugging. Be concise and specific.'
           });
 
           this.aiAvailable = true;
@@ -87,9 +88,9 @@ class MosqitLoggerAI {
     }
 
     // Fallback to Prompt API if available
-    if (!this.aiAvailable && 'ai' in self && self.ai?.languageModel) {
+    if (!this.aiAvailable && 'ai' in self && (self.ai as any)?.languageModel) {
       try {
-        const capabilities = await self.ai.languageModel.capabilities();
+        const capabilities = await (self.ai as any).languageModel.capabilities();
         if (capabilities.available === 'readily') {
           this.aiAvailable = true;
           console.info('[Mosqit] ✅ Chrome Prompt API ready - AI analysis enabled');
@@ -110,14 +111,13 @@ class MosqitLoggerAI {
     methods.forEach(method => {
       const original = this.originalConsole[method];
 
-      (console as Record<string, unknown>)[method] = async (...args: unknown[]) => {
+      (console as any)[method] = async (...args: unknown[]) => {
         if (this.enabled) {
           const metadata = await this.captureMetadata(method, args);
 
-          // Perform AI analysis for errors and warnings
-          if ((method === 'error' || method === 'warn')) {
-            metadata.analysis = await this.performAIAnalysis(metadata);
-          }
+          // Perform AI analysis for all log types to provide debugging insights
+          // AI can help with any debugging output, not just errors
+          metadata.analysis = await this.performAIAnalysis(metadata);
 
           this.storelog(metadata);
           this.sendToExtension(metadata);
@@ -133,12 +133,17 @@ class MosqitLoggerAI {
     // Try Writer API first (best for structured output)
     if (this.writerSession) {
       try {
-        const prompt = `Analyze this error and provide: 1) Error type 2) Root cause 3) Fix suggestion.
-Error: ${metadata.message}
-File: ${metadata.file || 'unknown'}:${metadata.line || '?'}
-Component: ${metadata.domNode ? `<${metadata.domNode.tag}>` : 'unknown'}`;
+        const prompt = `Analyze this debugging output and provide insights:
 
-        const response = await this.writerSession.write(prompt, {
+Log Level: ${metadata.level}
+Output: ${metadata.message}
+Location: ${metadata.file || 'unknown'}:${metadata.line || '?'}
+${metadata.domNode ? `UI Element: <${metadata.domNode.tag}${metadata.domNode.id ? ` id="${metadata.domNode.id}"` : ''}>` : ''}
+
+Provide: 1) What's happening 2) Potential issues or root cause 3) Actionable next steps for debugging
+Be concise - max 3 sentences.`;
+
+        const response = await (this.writerSession as any).write(prompt, {
           context: `Stack trace: ${metadata.stack?.substring(0, 200) || 'none'}`
         });
 
@@ -150,13 +155,18 @@ Component: ${metadata.domNode ? `<${metadata.domNode.tag}>` : 'unknown'}`;
     }
 
     // Try Prompt API as fallback
-    if (this.aiAvailable && self.ai?.languageModel) {
+    if (this.aiAvailable && (self.ai as any)?.languageModel) {
       try {
-        const session = await self.ai.languageModel.create({
-          systemPrompt: 'You are a debugging assistant. Analyze errors with Logcat precision. Be concise.'
+        const session = await (self.ai as any).languageModel.create({
+          systemPrompt: 'You are Mosqit, a debugging assistant. Analyze any log output, debug info, warnings, or errors. Provide actionable debugging insights. Be extremely concise.'
         });
 
-        const prompt = `Analyze: ${metadata.message} at ${metadata.file}:${metadata.line}`;
+        const prompt = `Debug analysis needed:
+Level: ${metadata.level}
+Message: ${metadata.message}
+Location: ${metadata.file}:${metadata.line}
+
+Provide debugging insights in 1-2 sentences.`;
         const response = await session.prompt(prompt);
         session.destroy();
 
@@ -192,24 +202,67 @@ Component: ${metadata.domNode ? `<${metadata.domNode.tag}>` : 'unknown'}`;
     const errorType = this.extractErrorType(metadata.message);
     const file = metadata.file ? `${metadata.file}:${metadata.line}` : 'unknown';
 
-    // Logcat-inspired analysis patterns
+    // Comprehensive debugging patterns for various scenarios
     const patterns: Record<string, string> = {
-      'TypeError.*null': `🔴 NullPointer at ${file}. Check object initialization before access.`,
-      'TypeError.*undefined': `🔴 Undefined access at ${file}. Verify variable exists.`,
-      'ReferenceError': `🔴 Reference error at ${file}. Check imports and declarations.`,
-      'SyntaxError': `🔴 Syntax error at ${file}. Check brackets and semicolons.`,
-      'NetworkError|fetch': `🔴 Network failure at ${file}. Check API endpoint and CORS.`,
-      'Promise.*rejection': `🟡 Unhandled promise at ${file}. Add .catch() handler.`,
+      // JavaScript Errors
+      'TypeError.*null|cannot.*null': `🔴 Null reference at ${file}. Add null checks or optional chaining (?.).`,
+      'TypeError.*undefined|cannot.*undefined': `🔴 Undefined access at ${file}. Check if variable/property exists first.`,
+      'ReferenceError|not defined': `🔴 Missing reference at ${file}. Check imports, typos, or load order.`,
+      'SyntaxError|Unexpected token': `🔴 Syntax issue at ${file}. Check brackets, quotes, or semicolons.`,
+
+      // Network & API Issues
+      'NetworkError|fetch.*failed|ERR_NETWORK|ERR_INTERNET': `🔴 Network failure at ${file}. Check connectivity, URL, and CORS policy.`,
+      '404|Not Found': `🟡 Resource not found at ${file}. Verify URL path and server routes.`,
+      '401|403|Unauthorized|Forbidden': `🔴 Auth issue at ${file}. Check credentials or permissions.`,
+      '500|502|503|Internal Server': `🔴 Server error at ${file}. Check backend logs and service health.`,
+      'timeout|timed out': `🟡 Operation timeout at ${file}. Consider retry logic or longer timeout.`,
+
+      // Async & Promise Issues
+      'Promise.*rejection|Unhandled.*rejection': `🟡 Unhandled async error at ${file}. Add .catch() or try/catch with await.`,
+      'async|await': `🟡 Async operation at ${file}. Check promise handling and error boundaries.`,
+
+      // Performance & Memory
+      'Maximum call stack|stack overflow': `🔴 Stack overflow at ${file}. Check for infinite recursion or loops.`,
+      'out of memory|memory leak': `🔴 Memory issue at ${file}. Check for retained references or large data.`,
+      'slow|performance|lag': `🟡 Performance concern at ${file}. Profile with DevTools Performance tab.`,
+
+      // DOM & UI Issues
+      'DOM|element|querySelector': `🟡 DOM manipulation at ${file}. Ensure element exists before access.`,
+      'addEventListener|event': `🟡 Event handling at ${file}. Check event binding and bubbling.`,
+      'render|component|React|Vue|Angular': `🟡 UI framework issue at ${file}. Check component lifecycle and state.`,
+
+      // Data & State Issues
+      'state|setState|mutation': `🟡 State management at ${file}. Check state updates and immutability.`,
+      'localStorage|sessionStorage|cookie': `🟡 Storage operation at ${file}. Check browser support and quotas.`,
+      'JSON.parse|parsing|invalid': `🔴 Data parsing error at ${file}. Validate format before parsing.`,
+
+      // Security & Validation
+      'security|XSS|injection': `🔴 Security concern at ${file}. Sanitize user input and validate data.`,
+      'validation|invalid|required': `🟡 Validation issue at ${file}. Check input constraints and format.`,
+
+      // General Debugging Info
+      'console.log|debug|trace': `📘 Debug output at ${file}. Review logged values and execution flow.`,
+      'warning|deprecated': `🟡 Warning at ${file}. Update deprecated code or address concern.`,
+      'info|notice': `📘 Info logged at ${file}. Note for debugging context.`,
     };
 
+    // Check all patterns
     for (const [pattern, analysis] of Object.entries(patterns)) {
       if (new RegExp(pattern, 'i').test(metadata.message)) {
         return analysis;
       }
     }
 
-    // Generic fallback
-    return `🟡 ${errorType} at ${file}. Check stack trace for details.`;
+    // Smart generic fallback based on log level
+    const levelAnalysis: Record<string, string> = {
+      'error': `🔴 Error at ${file}. Check stack trace and surrounding code.`,
+      'warn': `🟡 Warning at ${file}. Review potential issue before it escalates.`,
+      'info': `📘 Info at ${file}. Debugging checkpoint or status update.`,
+      'debug': `🔍 Debug at ${file}. Detailed diagnostic information logged.`,
+      'log': `📝 Log at ${file}. General output for debugging purposes.`,
+    };
+
+    return levelAnalysis[metadata.level] || `📝 ${errorType} at ${file}. Review output and context.`;
   }
 
   private async captureMetadata(level: string, args: unknown[]): Promise<LogMetadata> {
@@ -321,7 +374,7 @@ Component: ${metadata.domNode ? `<${metadata.domNode.tag}>` : 'unknown'}`;
     ];
 
     globals.forEach(({ name, pkg }) => {
-      const global = (window as Record<string, unknown>)[name] as { version?: string; VERSION?: string } | undefined;
+      const global = (window as any)[name] as { version?: string; VERSION?: string } | undefined;
       if (global) {
         const version = global.version || global.VERSION || '';
         deps.push(version ? `${pkg}@${version}` : pkg);
@@ -434,7 +487,7 @@ Component: ${metadata.domNode ? `<${metadata.domNode.tag}>` : 'unknown'}`;
     document.addEventListener('click', (event) => {
       const target = event.target as Element;
       if (target) {
-        (window as Record<string, unknown>).__mosqit_last_clicked = {
+        (window as any).__mosqit_last_clicked = {
           tag: target.tagName.toLowerCase(),
           id: target.id,
           classes: target.className,
@@ -500,7 +553,7 @@ Component: ${metadata.domNode ? `<${metadata.domNode.tag}>` : 'unknown'}`;
   public async destroy() {
     // Clean up AI sessions
     if (this.writerSession) {
-      this.writerSession.destroy();
+      (this.writerSession as any).destroy();
       this.writerSession = null;
     }
     this.aiAvailable = false;
@@ -511,6 +564,6 @@ Component: ${metadata.domNode ? `<${metadata.domNode.tag}>` : 'unknown'}`;
 const mosqit = new MosqitLoggerAI();
 
 // Export for use in other modules
-(window as Record<string, unknown>).mosqit = mosqit;
+(window as any).mosqit = mosqit;
 
 export default mosqit;

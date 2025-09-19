@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mosqit - AI-Powered Debugging Assistant</title>
+    <meta name="description" content="Open-source Chrome extension for AI-powered debugging using Chrome's built-in Gemini Nano">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        header {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 40px;
+            margin-bottom: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        .logo {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+        h1 {
+            font-size: 2.5rem;
+            color: #2d3748;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        .subtitle {
+            font-size: 1.2rem;
+            color: #718096;
+            margin-bottom: 20px;
+        }
+        .badges {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+        .badge {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #f7fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 25px;
+            font-size: 0.9rem;
+            color: #2d3748;
+            font-weight: 600;
+        }
+        .badge.highlight {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+        .hero-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 40px;
+            margin-bottom: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+        }
+        .hero-section h2 {
+            color: #2d3748;
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+        }
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            margin: 30px 0;
+        }
+        .feature-card {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.12);
+        }
+        .feature-card h3 {
+            color: #2d3748;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .feature-icon {
+            font-size: 1.5rem;
+        }
+        .feature-card p {
+            color: #718096;
+            line-height: 1.6;
+        }
+        .cta-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+        }
+        .button-group {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 30px 0;
+        }
+        .btn {
+            display: inline-block;
+            padding: 15px 30px;
+            border-radius: 30px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s;
+            font-size: 1.1rem;
+        }
+        .btn-primary {
+            background: #667eea;
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        .btn-primary:hover {
+            background: #5a67d8;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+        }
+        .btn-secondary {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+        .btn-secondary:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+        }
+        .btn-github {
+            background: #24292e;
+            color: white;
+        }
+        .btn-github:hover {
+            background: #1a1e22;
+            transform: translateY(-2px);
+        }
+        .challenge-banner {
+            background: linear-gradient(135deg, #FF6B6B, #FFE66D);
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+            color: white;
+            text-align: center;
+            font-weight: 600;
+        }
+        .tech-stack {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+        .tech-badge {
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 25px;
+            color: white;
+            font-weight: 600;
+        }
+        .code-preview {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+        }
+        .code-preview pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        footer {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+        }
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        .footer-links a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.3s;
+        }
+        .footer-links a:hover {
+            color: #5a67d8;
+        }
+        .installation-steps {
+            background: #f7fafc;
+            padding: 25px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .installation-steps ol {
+            padding-left: 20px;
+            color: #2d3748;
+        }
+        .installation-steps li {
+            margin: 10px 0;
+            line-height: 1.8;
+        }
+        .installation-steps code {
+            background: #e2e8f0;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
+            .subtitle {
+                font-size: 1rem;
+            }
+            .feature-card {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">🦟</div>
+            <h1>Mosqit</h1>
+            <p class="subtitle">AI-Powered Debugging Assistant for Chrome</p>
+            <div class="badges">
+                <span class="badge highlight">🏆 Chrome Built-in AI Challenge 2025</span>
+                <span class="badge">🤖 Gemini Nano Powered</span>
+                <span class="badge">🔒 100% On-Device AI</span>
+                <span class="badge">⚡ Real-Time Analysis</span>
+                <span class="badge">📖 Open Source</span>
+            </div>
+            <div class="challenge-banner">
+                Built for the Google Chrome Built-in AI Challenge 2025 • Deadline: October 31, 2025
+            </div>
+        </header>
+
+        <div class="hero-section">
+            <h2>🚀 Transform Your Debugging Experience</h2>
+            <p>Mosqit brings Android Logcat-inspired intelligent error analysis directly to your Chrome DevTools. Using Chrome's built-in Gemini Nano AI, get instant insights, root cause analysis, and fix suggestions - all running locally on your device for maximum privacy and speed.</p>
+
+            <div class="tech-stack">
+                <span class="tech-badge">TypeScript</span>
+                <span class="tech-badge">Chrome Extension API</span>
+                <span class="tech-badge">Writer API</span>
+                <span class="tech-badge">Prompt API</span>
+                <span class="tech-badge">Summarizer API</span>
+            </div>
+
+            <div class="button-group">
+                <a href="test-logger.html" class="btn btn-primary">🧪 Try Demo</a>
+                <a href="https://github.com/ma-za-kpe/mosqit" class="btn btn-github" target="_blank">⭐ Star on GitHub</a>
+                <a href="#installation" class="btn btn-secondary">📦 Install Extension</a>
+            </div>
+        </div>
+
+        <div class="hero-section">
+            <h2>✨ Key Features</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <h3><span class="feature-icon">🤖</span> AI-Powered Analysis</h3>
+                    <p>Leverages Chrome's built-in Gemini Nano model to provide intelligent error analysis, pattern detection, and automated fix suggestions without sending data to external servers.</p>
+                </div>
+                <div class="feature-card">
+                    <h3><span class="feature-icon">🔍</span> Logcat-Inspired UI</h3>
+                    <p>Familiar Android Logcat-style interface with color-coded severity levels, filtering, and search capabilities for efficient debugging workflow.</p>
+                </div>
+                <div class="feature-card">
+                    <h3><span class="feature-icon">⚡</span> Real-Time Capture</h3>
+                    <p>Automatically intercepts and enhances console.log, console.error, and console.warn calls with contextual information and AI insights.</p>
+                </div>
+                <div class="feature-card">
+                    <h3><span class="feature-icon">🔐</span> 100% Private</h3>
+                    <p>All AI processing happens on-device using Chrome's local Gemini Nano model. Your code and errors never leave your machine.</p>
+                </div>
+                <div class="feature-card">
+                    <h3><span class="feature-icon">📊</span> Pattern Detection</h3>
+                    <p>Automatically identifies recurring errors and patterns, helping you spot systemic issues in your codebase.</p>
+                </div>
+                <div class="feature-card">
+                    <h3><span class="feature-icon">🎯</span> Smart Suggestions</h3>
+                    <p>Get actionable fix suggestions and best practices recommendations based on error context and stack traces.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="cta-section" id="installation">
+            <h2>🛠️ Installation & Setup</h2>
+            <div class="installation-steps">
+                <ol>
+                    <li><strong>Enable Chrome AI:</strong> Navigate to <code>chrome://flags</code> and enable:
+                        <ul>
+                            <li>Prompt API for Gemini Nano</li>
+                            <li>Summarization API for WebUI</li>
+                            <li>Writer API for WebUI</li>
+                            <li>Rewriter API for WebUI</li>
+                            <li>Optimization Guide On Device Model</li>
+                        </ul>
+                    </li>
+                    <li><strong>Restart Chrome:</strong> Completely restart Chrome (quit from system tray)</li>
+                    <li><strong>Clone Repository:</strong> <code>git clone https://github.com/ma-za-kpe/mosqit.git</code></li>
+                    <li><strong>Build Extension:</strong> <code>npm install && npm run build</code></li>
+                    <li><strong>Load Extension:</strong>
+                        <ul>
+                            <li>Open <code>chrome://extensions</code></li>
+                            <li>Enable Developer mode</li>
+                            <li>Click "Load unpacked"</li>
+                            <li>Select the <code>dist</code> folder</li>
+                        </ul>
+                    </li>
+                    <li><strong>Download AI Model:</strong> On first use, Chrome will download Gemini Nano (~2GB, takes 20-30 minutes)</li>
+                </ol>
+            </div>
+
+            <div class="code-preview">
+                <pre>// Example: How Mosqit enhances your debugging
+console.error("Cannot read property 'name' of null");
+
+// Mosqit AI Analysis:
+// 🔍 Type: TypeError - Null Reference
+// 💡 Cause: Attempting to access property on null object
+// ✅ Fix: Add null check before accessing properties
+// 📝 Suggestion: Use optional chaining: obj?.name</pre>
+            </div>
+        </div>
+
+        <div class="hero-section">
+            <h2>🤝 Open Source Project</h2>
+            <p>Mosqit is proudly open source and welcomes contributions from the community. Whether you're fixing bugs, adding features, or improving documentation, your help makes Mosqit better for everyone.</p>
+
+            <div class="button-group">
+                <a href="https://github.com/ma-za-kpe/mosqit/issues" class="btn btn-secondary" target="_blank">🐛 Report Issues</a>
+                <a href="https://github.com/ma-za-kpe/mosqit/pulls" class="btn btn-secondary" target="_blank">🔀 Submit PR</a>
+                <a href="https://github.com/ma-za-kpe/mosqit/discussions" class="btn btn-secondary" target="_blank">💬 Discussions</a>
+            </div>
+
+            <h3 style="margin-top: 30px;">Contributing</h3>
+            <p>We welcome contributions! Check out our <a href="https://github.com/ma-za-kpe/mosqit/blob/main/CONTRIBUTING.md" target="_blank" style="color: #667eea;">contribution guidelines</a> to get started.</p>
+        </div>
+
+        <footer>
+            <p><strong>Mosqit</strong> - Built with ❤️ for the Chrome Built-in AI Challenge 2025</p>
+            <div class="footer-links">
+                <a href="https://github.com/ma-za-kpe/mosqit" target="_blank">GitHub</a>
+                <a href="https://developer.chrome.com/docs/ai/built-in" target="_blank">Chrome AI Docs</a>
+                <a href="test-logger.html">Test Suite</a>
+                <a href="https://github.com/ma-za-kpe/mosqit/blob/main/LICENSE" target="_blank">MIT License</a>
+            </div>
+            <p style="margin-top: 20px; color: #718096;">© 2025 Mosqit Project. Open Source under MIT License.</p>
+        </footer>
+    </div>
+</body>
+</html>

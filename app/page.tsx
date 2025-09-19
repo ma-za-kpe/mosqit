@@ -1,103 +1,349 @@
-import Image from "next/image";
+'use client';
 
 export default function Home() {
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <>
+      <style jsx>{`
+        * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+        }
+        .gradient-bg {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          min-height: 100vh;
+        }
+        .container {
+          max-width: 1200px;
+          margin: 0 auto;
+          padding: 20px;
+        }
+        .card {
+          background: rgba(255, 255, 255, 0.95);
+          border-radius: 20px;
+          padding: 40px;
+          margin-bottom: 30px;
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+        }
+        .logo {
+          font-size: 4rem;
+          text-align: center;
+          margin-bottom: 20px;
+        }
+        .title {
+          font-size: 2.5rem;
+          color: #2d3748;
+          margin-bottom: 10px;
+          font-weight: 700;
+          text-align: center;
+        }
+        .subtitle {
+          font-size: 1.2rem;
+          color: #718096;
+          margin-bottom: 20px;
+          text-align: center;
+        }
+        .badges {
+          display: flex;
+          justify-content: center;
+          gap: 15px;
+          flex-wrap: wrap;
+          margin: 20px 0;
+        }
+        .badge {
+          display: inline-block;
+          padding: 8px 16px;
+          background: #f7fafc;
+          border: 2px solid #e2e8f0;
+          border-radius: 25px;
+          font-size: 0.9rem;
+          color: #2d3748;
+          font-weight: 600;
+        }
+        .badge.highlight {
+          background: #667eea;
+          color: white;
+          border-color: #667eea;
+        }
+        .challenge-banner {
+          background: linear-gradient(135deg, #FF6B6B, #FFE66D);
+          padding: 20px;
+          border-radius: 15px;
+          margin: 20px 0;
+          color: white;
+          text-align: center;
+          font-weight: 600;
+        }
+        .features-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+          gap: 25px;
+          margin: 30px 0;
+        }
+        .feature-card {
+          background: white;
+          padding: 30px;
+          border-radius: 15px;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+          transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .feature-card:hover {
+          transform: translateY(-5px);
+          box-shadow: 0 15px 40px rgba(0, 0, 0, 0.12);
+        }
+        .feature-card h3 {
+          color: #2d3748;
+          margin-bottom: 10px;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+        .feature-icon {
+          font-size: 1.5rem;
+        }
+        .feature-card p {
+          color: #718096;
+          line-height: 1.6;
+        }
+        .button-group {
+          display: flex;
+          gap: 20px;
+          justify-content: center;
+          flex-wrap: wrap;
+          margin: 30px 0;
+        }
+        .btn {
+          display: inline-block;
+          padding: 15px 30px;
+          border-radius: 30px;
+          text-decoration: none;
+          font-weight: 600;
+          transition: all 0.3s;
+          font-size: 1.1rem;
+          cursor: pointer;
+          border: none;
+        }
+        .btn-primary {
+          background: #667eea;
+          color: white;
+          box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        .btn-primary:hover {
+          background: #5a67d8;
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+        }
+        .btn-secondary {
+          background: white;
+          color: #667eea;
+          border: 2px solid #667eea;
+        }
+        .btn-secondary:hover {
+          background: #667eea;
+          color: white;
+          transform: translateY(-2px);
+        }
+        .btn-github {
+          background: #24292e;
+          color: white;
+        }
+        .btn-github:hover {
+          background: #1a1e22;
+          transform: translateY(-2px);
+        }
+        .tech-stack {
+          display: flex;
+          gap: 15px;
+          justify-content: center;
+          flex-wrap: wrap;
+          margin: 20px 0;
+        }
+        .tech-badge {
+          padding: 10px 20px;
+          background: rgba(255, 255, 255, 0.1);
+          border: 2px solid rgba(255, 255, 255, 0.3);
+          border-radius: 25px;
+          color: white;
+          font-weight: 600;
+        }
+        .installation-steps {
+          background: #f7fafc;
+          padding: 25px;
+          border-radius: 10px;
+          margin: 20px 0;
+        }
+        .installation-steps ol {
+          padding-left: 20px;
+          color: #2d3748;
+        }
+        .installation-steps li {
+          margin: 10px 0;
+          line-height: 1.8;
+        }
+        .installation-steps code {
+          background: #e2e8f0;
+          padding: 2px 8px;
+          border-radius: 4px;
+          font-family: 'Courier New', monospace;
+          font-size: 0.9em;
+        }
+        .code-preview {
+          background: #2d3748;
+          color: #e2e8f0;
+          padding: 20px;
+          border-radius: 10px;
+          margin: 20px 0;
+          font-family: 'Courier New', monospace;
+          overflow-x: auto;
+        }
+        .footer-links {
+          display: flex;
+          justify-content: center;
+          gap: 30px;
+          margin: 20px 0;
+          flex-wrap: wrap;
+        }
+        .footer-links a {
+          color: #667eea;
+          text-decoration: none;
+          font-weight: 600;
+          transition: color 0.3s;
+        }
+        .footer-links a:hover {
+          color: #5a67d8;
+        }
+      `}</style>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+      <div className="gradient-bg">
+        <div className="container">
+          <div className="card">
+            <div className="logo">🦟</div>
+            <h1 className="title">Mosqit</h1>
+            <p className="subtitle">AI-Powered Debugging Assistant for Chrome</p>
+            <div className="badges">
+              <span className="badge highlight">🏆 Chrome Built-in AI Challenge 2025</span>
+              <span className="badge">🤖 Gemini Nano Powered</span>
+              <span className="badge">🔒 100% On-Device AI</span>
+              <span className="badge">⚡ Real-Time Analysis</span>
+              <span className="badge">📖 Open Source</span>
+            </div>
+            <div className="challenge-banner">
+              Built for the Google Chrome Built-in AI Challenge 2025 • Deadline: October 31, 2025
+            </div>
+          </div>
+
+          <div className="card">
+            <h2 style={{ color: '#2d3748', marginBottom: '20px' }}>🚀 Transform Your Debugging Experience</h2>
+            <p style={{ color: '#718096', lineHeight: '1.6' }}>
+              Mosqit brings Android Logcat-inspired intelligent error analysis directly to your Chrome DevTools.
+              Using Chrome&apos;s built-in Gemini Nano AI, get instant insights, root cause analysis, and fix suggestions -
+              all running locally on your device for maximum privacy and speed.
+            </p>
+
+            <div className="tech-stack">
+              <span className="tech-badge">TypeScript</span>
+              <span className="tech-badge">Chrome Extension API</span>
+              <span className="tech-badge">Writer API</span>
+              <span className="tech-badge">Prompt API</span>
+              <span className="tech-badge">Summarizer API</span>
+            </div>
+
+            <div className="button-group">
+              <a href="/test/test-logger.html" className="btn btn-primary">🧪 Try Demo</a>
+              <a href="https://github.com/ma-za-kpe/mosqit" className="btn btn-github" target="_blank" rel="noopener noreferrer">⭐ Star on GitHub</a>
+              <a href="#installation" className="btn btn-secondary">📦 Install Extension</a>
+            </div>
+          </div>
+
+          <div className="card">
+            <h2 style={{ color: '#2d3748', marginBottom: '20px' }}>✨ Key Features</h2>
+            <div className="features-grid">
+              <div className="feature-card">
+                <h3><span className="feature-icon">🤖</span> AI-Powered Analysis</h3>
+                <p>Leverages Chrome&apos;s built-in Gemini Nano model for intelligent debugging insights without external servers.</p>
+              </div>
+              <div className="feature-card">
+                <h3><span className="feature-icon">🔍</span> Universal Debugging</h3>
+                <p>Analyzes all log types - errors, warnings, performance issues, network problems, and general debug output.</p>
+              </div>
+              <div className="feature-card">
+                <h3><span className="feature-icon">⚡</span> Real-Time Capture</h3>
+                <p>Automatically intercepts all console outputs and enhances them with contextual AI insights.</p>
+              </div>
+              <div className="feature-card">
+                <h3><span className="feature-icon">🔐</span> 100% Private</h3>
+                <p>All AI processing happens on-device. Your code and debugging data never leave your machine.</p>
+              </div>
+              <div className="feature-card">
+                <h3><span className="feature-icon">📊</span> Pattern Detection</h3>
+                <p>Identifies recurring issues, performance bottlenecks, and systemic problems in your codebase.</p>
+              </div>
+              <div className="feature-card">
+                <h3><span className="feature-icon">🎯</span> Actionable Insights</h3>
+                <p>Get specific fix suggestions, best practices, and next debugging steps for any scenario.</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="card" id="installation">
+            <h2 style={{ color: '#2d3748', marginBottom: '20px' }}>🛠️ Installation & Setup</h2>
+            <div className="installation-steps">
+              <ol>
+                <li><strong>Enable Chrome AI:</strong> Navigate to <code>chrome://flags</code> and enable:
+                  <ul>
+                    <li>Prompt API for Gemini Nano</li>
+                    <li>Summarization API for WebUI</li>
+                    <li>Writer API for WebUI</li>
+                    <li>Optimization Guide On Device Model</li>
+                  </ul>
+                </li>
+                <li><strong>Restart Chrome:</strong> Completely restart Chrome (quit from system tray)</li>
+                <li><strong>Clone Repository:</strong> <code>git clone https://github.com/ma-za-kpe/mosqit.git</code></li>
+                <li><strong>Build Extension:</strong> <code>npm install && npm run build:extension</code></li>
+                <li><strong>Load Extension:</strong> Open chrome://extensions, enable Developer mode, load unpacked from dist folder</li>
+                <li><strong>Download AI Model:</strong> Chrome will download Gemini Nano (~2GB) on first use</li>
+              </ol>
+            </div>
+
+            <div className="code-preview">
+              <pre>{`// Mosqit enhances ALL your debugging:
+console.log("Checking user state");
+// Mosqit: 📝 State check at app.js:42. Consider using debugger or breakpoints.
+
+console.error("Cannot read property 'name' of null");
+// Mosqit: 🔴 Null reference at app.js:56. Add optional chaining: user?.name
+
+console.warn("API response slow: 3.2s");
+// Mosqit: 🟡 Performance issue. Consider caching or pagination.`}</pre>
+            </div>
+          </div>
+
+          <div className="card">
+            <h2 style={{ color: '#2d3748', marginBottom: '20px' }}>🤝 Open Source Project</h2>
+            <p style={{ color: '#718096', marginBottom: '20px' }}>
+              Mosqit is proudly open source and welcomes contributions from the community.
+              Whether you&apos;re fixing bugs, adding features, or improving documentation, your help makes Mosqit better for everyone.
+            </p>
+
+            <div className="button-group">
+              <a href="https://github.com/ma-za-kpe/mosqit/issues" className="btn btn-secondary" target="_blank" rel="noopener noreferrer">🐛 Report Issues</a>
+              <a href="https://github.com/ma-za-kpe/mosqit/pulls" className="btn btn-secondary" target="_blank" rel="noopener noreferrer">🔀 Submit PR</a>
+              <a href="https://github.com/ma-za-kpe/mosqit/discussions" className="btn btn-secondary" target="_blank" rel="noopener noreferrer">💬 Discussions</a>
+            </div>
+          </div>
+
+          <div className="card" style={{ textAlign: 'center' }}>
+            <p><strong>Mosqit</strong> - Built with ❤️ for the Chrome Built-in AI Challenge 2025</p>
+            <div className="footer-links">
+              <a href="https://github.com/ma-za-kpe/mosqit" target="_blank" rel="noopener noreferrer">GitHub</a>
+              <a href="https://developer.chrome.com/docs/ai/built-in" target="_blank" rel="noopener noreferrer">Chrome AI Docs</a>
+              <a href="/test/test-logger.html">Test Suite</a>
+              <a href="https://github.com/ma-za-kpe/mosqit/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT License</a>
+            </div>
+            <p style={{ marginTop: '20px', color: '#718096' }}>© 2025 Mosqit Project. Open Source under MIT License.</p>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+      </div>
+    </>
   );
 }

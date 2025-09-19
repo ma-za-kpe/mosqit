@@ -556,6 +556,7 @@ export default function Home() {
 
             <div className="button-group">
               <a href="/test/test-logger.html" className="btn btn-primary">🧪 Try Demo</a>
+              <a href="/tutorial" className="btn btn-secondary">📚 Tutorial</a>
               <a href="https://github.com/ma-za-kpe/mosqit" className="btn btn-github" target="_blank" rel="noopener noreferrer">⭐ Star on GitHub</a>
               <button
                 className="btn btn-secondary"
@@ -960,6 +961,7 @@ console.warn("API response slow: 3.2s");
               <a href="https://github.com/ma-za-kpe/mosqit" target="_blank" rel="noopener noreferrer">GitHub</a>
               <a href="https://developer.chrome.com/docs/ai/built-in" target="_blank" rel="noopener noreferrer">Chrome AI Docs</a>
               <a href="/test/test-logger.html">Test Suite</a>
+              <a href="/tutorial">Tutorial</a>
               <a href="https://github.com/ma-za-kpe/mosqit/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT License</a>
             </div>
             <p style={{ marginTop: '20px', color: '#718096' }}>© 2025 Mosqit Project. Open Source under MIT License.</p>

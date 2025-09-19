@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mosqit - Hackathon Submission Image Generator</title>
+    <style>
+        body {
+            margin: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f0f0;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .canvas-container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin: 20px 0;
+        }
+        canvas {
+            border: 1px solid #ddd;
+            display: block;
+            margin: 0 auto;
+        }
+        .controls {
+            text-align: center;
+            margin: 20px 0;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 0 10px;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #5a67d8;
+        }
+        .size-selector {
+            margin: 20px 0;
+            text-align: center;
+        }
+        select {
+            padding: 8px 15px;
+            font-size: 16px;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🦟 Mosqit - Hackathon Submission Image Generator</h1>
+
+        <div class="size-selector">
+            <label for="sizeSelect">Select Image Size: </label>
+            <select id="sizeSelect" onchange="changeSize()">
+                <option value="1200x630">Social Media Banner (1200x630)</option>
+                <option value="1920x1080">Full HD Banner (1920x1080)</option>
+                <option value="800x800">Square Social (800x800)</option>
+                <option value="1600x900">Wide Banner (1600x900)</option>
+            </select>
+        </div>
+
+        <div class="canvas-container">
+            <canvas id="canvas"></canvas>
+        </div>
+
+        <div class="controls">
+            <button onclick="generateImage('banner')">Generate Banner Style</button>
+            <button onclick="generateImage('features')">Generate Features Style</button>
+            <button onclick="generateImage('technical')">Generate Technical Style</button>
+            <button onclick="downloadImage()">Download PNG</button>
+        </div>
+    </div>
+
+    <script>
+        let currentSize = { width: 1200, height: 630 };
+        let canvas, ctx;
+
+        window.onload = function() {
+            canvas = document.getElementById('canvas');
+            ctx = canvas.getContext('2d');
+            changeSize();
+        };
+
+        function changeSize() {
+            const select = document.getElementById('sizeSelect');
+            const [width, height] = select.value.split('x').map(Number);
+            currentSize = { width, height };
+            canvas.width = width;
+            canvas.height = height;
+            generateImage('banner');
+        }
+
+        function generateImage(style) {
+            const { width, height } = currentSize;
+
+            // Clear canvas
+            ctx.clearRect(0, 0, width, height);
+
+            if (style === 'banner') {
+                // Gradient background
+                const gradient = ctx.createLinearGradient(0, 0, width, height);
+                gradient.addColorStop(0, '#667eea');
+                gradient.addColorStop(1, '#764ba2');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, width, height);
+
+                // Add subtle pattern overlay
+                ctx.globalAlpha = 0.1;
+                ctx.fillStyle = 'white';
+                for (let i = 0; i < width; i += 100) {
+                    for (let j = 0; j < height; j += 100) {
+                        ctx.beginPath();
+                        ctx.arc(i, j, 30, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+                ctx.globalAlpha = 1;
+
+                // Main content container
+                const containerWidth = width * 0.85;
+                const containerHeight = height * 0.8;
+                const containerX = (width - containerWidth) / 2;
+                const containerY = (height - containerHeight) / 2;
+
+                // Semi-transparent background
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+                roundRect(ctx, containerX, containerY, containerWidth, containerHeight, 20);
+                ctx.fill();
+
+                // Logo (mosquito emoji)
+                ctx.font = `${height * 0.25}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.fillStyle = 'white';
+                ctx.fillText('🦟', width / 2, height * 0.35);
+
+                // Title
+                ctx.font = `bold ${height * 0.12}px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
+                ctx.fillStyle = 'white';
+                ctx.fillText('Mosqit', width / 2, height * 0.5);
+
+                // Tagline
+                ctx.font = `${height * 0.04}px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+                ctx.fillText('AI-Driven Frontend Debugging Chrome Extension', width / 2, height * 0.58);
+
+                // Sub-tagline
+                ctx.font = `${height * 0.035}px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                ctx.fillText('Buzz through frontend bugs with Chrome\'s built-in AI', width / 2, height * 0.65);
+
+                // Challenge badge
+                ctx.fillStyle = '#FFB800';
+                roundRect(ctx, width/2 - 200, height * 0.72, 400, height * 0.08, 25);
+                ctx.fill();
+
+                ctx.font = `bold ${height * 0.03}px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
+                ctx.fillStyle = 'white';
+                ctx.fillText('🏆 Chrome Built-in AI Challenge 2025', width / 2, height * 0.775);
+
+                // Features badges
+                const badges = ['🚀 <100ms Response', '🔒 100% On-Device', '🤖 Gemini Nano'];
+                const badgeWidth = 180;
+                const startX = (width - (badges.length * badgeWidth + (badges.length - 1) * 20)) / 2;
+
+                ctx.font = `${height * 0.025}px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
+                badges.forEach((badge, i) => {
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+                    const x = startX + i * (badgeWidth + 20);
+                    roundRect(ctx, x, height * 0.85, badgeWidth, height * 0.06, 20);
+                    ctx.fill();
+
+                    ctx.fillStyle = 'white';
+                    ctx.fillText(badge, x + badgeWidth/2, height * 0.89);
+                });
+
+            } else if (style === 'features') {
+                // Light gradient background
+                const gradient = ctx.createLinearGradient(0, 0, width, height);
+                gradient.addColorStop(0, '#f7fafc');
+                gradient.addColorStop(1, '#e2e8f0');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, width, height);
+
+                // Header bar
+                ctx.fillStyle = '#667eea';
+                ctx.fillRect(0, 0, width, height * 0.15);
+
+                // Logo and title in header
+                ctx.font = `${height * 0.08}px Arial`;
+                ctx.textAlign = 'left';
+                ctx.fillStyle = 'white';
+                ctx.fillText('🦟', width * 0.05, height * 0.1);
+
+                ctx.font = `bold ${height * 0.06}px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
+                ctx.fillText('Mosqit', width * 0.15, height * 0.095);
+
+                ctx.font = `${height * 0.025}px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                ctx.textAlign = 'right';
+                ctx.fillText('Chrome Built-in AI Challenge 2025', width * 0.95, height * 0.095);
+
+                // Main features title
+                ctx.textAlign = 'center';
+                ctx.font = `bold ${height * 0.05}px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
+                ctx.fillStyle = '#2d3748';
+                ctx.fillText('Revolutionary AI-Powered Debugging', width / 2, height * 0.25);
+
+                // Feature cards
+                const features = [
+                    { icon: '🤖', title: 'Writer API', desc: 'Structured bug reports' },
+                    { icon: '💡', title: 'Prompt API', desc: 'Complex analysis' },
+                    { icon: '📊', title: 'Summarizer API', desc: 'Pattern detection' },
+                    { icon: '⚡', title: '<100ms', desc: 'Real-time response' },
+                    { icon: '🔒', title: '100% Private', desc: 'On-device processing' },
+                    { icon: '🎯', title: 'Smart Detection', desc: 'Framework-specific' }
+                ];
+
+                const cardWidth = width * 0.25;
+                const cardHeight = height * 0.2;
+                const cols = 3;
+                const rows = 2;
+                const startX = width * 0.1;
+                const startY = height * 0.35;
+                const gapX = (width * 0.8 - cols * cardWidth) / (cols - 1);
+                const gapY = height * 0.05;
+
+                features.forEach((feature, i) => {
+                    const row = Math.floor(i / cols);
+                    const col = i % cols;
+                    const x = startX + col * (cardWidth + gapX);
+                    const y = startY + row * (cardHeight + gapY);
+
+                    // Card background
+                    ctx.fillStyle = 'white';
+                    ctx.shadowColor = 'rgba(0, 0, 0, 0.1)';
+                    ctx.shadowBlur = 10;
+                    ctx.shadowOffsetX = 0;
+                    ctx.shadowOffsetY = 2;
+                    roundRect(ctx, x, y, cardWidth, cardHeight, 15);
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+
+                    // Icon
+                    ctx.font = `${height * 0.06}px Arial`;
+                    ctx.textAlign = 'center';
+                    ctx.fillText(feature.icon, x + cardWidth/2, y + cardHeight * 0.35);
+
+                    // Title
+                    ctx.font = `bold ${height * 0.025}px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
+                    ctx.fillStyle = '#2d3748';
+                    ctx.fillText(feature.title, x + cardWidth/2, y + cardHeight * 0.55);
+
+                    // Description
+                    ctx.font = `${height * 0.02}px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
+                    ctx.fillStyle = '#718096';
+                    ctx.fillText(feature.desc, x + cardWidth/2, y + cardHeight * 0.75);
+                });
+
+                // Footer
+                ctx.fillStyle = '#667eea';
+                ctx.fillRect(0, height * 0.9, width, height * 0.1);
+
+                ctx.font = `${height * 0.025}px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
+                ctx.fillStyle = 'white';
+                ctx.textAlign = 'center';
+                ctx.fillText('🚀 Transform your debugging experience with AI-driven insights from DevTools', width / 2, height * 0.95);
+
+            } else if (style === 'technical') {
+                // Dark technical background
+                ctx.fillStyle = '#1a202c';
+                ctx.fillRect(0, 0, width, height);
+
+                // Grid pattern
+                ctx.strokeStyle = 'rgba(102, 126, 234, 0.1)';
+                ctx.lineWidth = 1;
+                for (let i = 0; i < width; i += 30) {
+                    ctx.beginPath();
+                    ctx.moveTo(i, 0);
+                    ctx.lineTo(i, height);
+                    ctx.stroke();
+                }
+                for (let i = 0; i < height; i += 30) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, i);
+                    ctx.lineTo(width, i);
+                    ctx.stroke();
+                }
+
+                // Header with logo
+                ctx.font = `${height * 0.12}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.fillStyle = '#667eea';
+                ctx.fillText('🦟', width * 0.1, height * 0.15);
+
+                ctx.font = `bold ${height * 0.06}px 'Courier New', monospace`;
+                ctx.fillStyle = '#e2e8f0';
+                ctx.textAlign = 'left';
+                ctx.fillText('Mosqit', width * 0.18, height * 0.14);
+
+                // Technical specs
+                ctx.font = `${height * 0.025}px 'Courier New', monospace`;
+                ctx.fillStyle = '#667eea';
+                ctx.fillText('// AI-Driven Frontend Debugging Extension', width * 0.18, height * 0.2);
+
+                // Code snippet
+                const codeY = height * 0.3;
+                ctx.font = `${height * 0.022}px 'Courier New', monospace`;
+
+                const codeLines = [
+                    { text: '// Chrome Built-in AI Integration', color: '#718096' },
+                    { text: 'const ai = await window.ai.languageModel.create();', color: '#a0aec0' },
+                    { text: '', color: '#a0aec0' },
+                    { text: '// Real-time error analysis', color: '#718096' },
+                    { text: 'console.error("Cannot read property \'name\' of null");', color: '#fc8181' },
+                    { text: '// Mosqit: 🔴 Null reference detected at app.js:42', color: '#48bb78' },
+                    { text: '// Fix: Add optional chaining → user?.name', color: '#48bb78' },
+                    { text: '', color: '#a0aec0' },
+                    { text: '// Pattern detection after 3+ occurrences', color: '#718096' },
+                    { text: 'if (errorCount > 2) {', color: '#a0aec0' },
+                    { text: '  detectRecurringPattern(error);', color: '#a0aec0' },
+                    { text: '  generateBugReport(context);', color: '#a0aec0' },
+                    { text: '}', color: '#a0aec0' }
+                ];
+
+                codeLines.forEach((line, i) => {
+                    ctx.fillStyle = line.color;
+                    ctx.fillText(line.text, width * 0.1, codeY + i * height * 0.035);
+                });
+
+                // Stats section
+                const statsY = height * 0.75;
+                ctx.fillStyle = 'rgba(102, 126, 234, 0.2)';
+                roundRect(ctx, width * 0.6, statsY - height * 0.08, width * 0.35, height * 0.25, 10);
+                ctx.fill();
+
+                ctx.font = `bold ${height * 0.03}px 'Courier New', monospace`;
+                ctx.fillStyle = '#667eea';
+                ctx.textAlign = 'center';
+                ctx.fillText('Performance Metrics', width * 0.775, statsY);
+
+                ctx.font = `${height * 0.025}px 'Courier New', monospace`;
+                ctx.fillStyle = '#48bb78';
+                ctx.textAlign = 'left';
+                const metrics = [
+                    '✓ Response Time: <100ms',
+                    '✓ Privacy: 100% On-Device',
+                    '✓ APIs: Writer + Prompt + Summarizer',
+                    '✓ Test Coverage: 50+ Scenarios'
+                ];
+                metrics.forEach((metric, i) => {
+                    ctx.fillText(metric, width * 0.63, statsY + (i + 1.5) * height * 0.035);
+                });
+
+                // Footer
+                ctx.font = `${height * 0.025}px 'Courier New', monospace`;
+                ctx.fillStyle = '#FFB800';
+                ctx.textAlign = 'center';
+                ctx.fillText('🏆 Chrome Built-in AI Challenge 2025 Submission', width / 2, height * 0.95);
+            }
+        }
+
+        function roundRect(ctx, x, y, width, height, radius) {
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+        }
+
+        function downloadImage() {
+            const link = document.createElement('a');
+            link.download = `mosqit-hackathon-${currentSize.width}x${currentSize.height}.png`;
+            link.href = canvas.toDataURL();
+            link.click();
+        }
+
+        // Generate initial image
+        window.onload = function() {
+            canvas = document.getElementById('canvas');
+            ctx = canvas.getContext('2d');
+            changeSize();
+        };
+    </script>
+</body>
+</html>

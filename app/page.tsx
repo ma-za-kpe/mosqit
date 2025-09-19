@@ -809,12 +809,12 @@ console.warn("API response slow: 3.2s");
             <div style={{ background: '#f0fff4', padding: '20px', borderRadius: '10px' }}>
               <h3 style={{ color: '#2d3748', marginBottom: '15px' }}>📋 Planned Features</h3>
               <ul style={{ color: '#4a5568', lineHeight: '1.8', paddingLeft: '20px' }}>
-                <li>Mobile Dashboard (Q2 2025)</li>
-                <li>Multi-Language Support (Q2 2025)</li>
-                <li>Team Collaboration Features (Q3 2025)</li>
-                <li>VS Code Extension (Q3 2025)</li>
-                <li>CI/CD Pipeline Integration (Q4 2025)</li>
-                <li>Slack/Discord Notifications (Q4 2025)</li>
+                <li>Mobile Dashboard</li>
+                <li>Multi-Language Support</li>
+                <li>Team Collaboration Features</li>
+                <li>VS Code Extension</li>
+                <li>CI/CD Pipeline Integration</li>
+                <li>Slack/Discord Notifications</li>
               </ul>
             </div>
           </div>

@@ -19,6 +19,22 @@
 ### 🎬 Demo Video
 [Watch Mosqit in Action](#) (Coming Soon)
 
+### 🚀 Quick Start
+```bash
+# Clone the repository
+git clone https://github.com/ma-za-kpe/mosqit.git
+cd mosqit
+
+# Install dependencies
+npm install
+
+# Run development server
+npm run dev
+
+# Build Chrome Extension
+npm run build:extension
+```
+
 ## ✨ Features
 
 ### 1. 🪵 **Custom Logger (`mosqit.log`)**

@@ -170,7 +170,7 @@ class MosqitLoggerAI {
 
   private async performAIAnalysis(metadata: LogMetadata): Promise<string> {
     // Try Writer API first (best for structured output)
-    if (this.writerSession && (self.ai as any)?.writer) {
+    if (this.writerSession) {
       try {
         const prompt = `Analyze this debugging output and provide insights:
 

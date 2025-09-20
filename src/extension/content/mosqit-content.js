@@ -79,28 +79,25 @@
         debug: console.debug.bind(console)
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-this-alias
-      const self = this;
-
       ['log', 'error', 'warn', 'info', 'debug'].forEach(method => {
-        console[method] = async function(...args) {
+        console[method] = async (...args) => {
           // Call original first
           originalConsole[method](...args);
 
           // Then capture and analyze
-          const metadata = self.captureMetadata(method, args);
+          const metadata = this.captureMetadata(method, args);
 
-          if (self.aiAvailable && (method === 'error' || method === 'warn')) {
-            metadata.analysis = await self.analyzeWithAI(metadata);
+          if (this.aiAvailable && (method === 'error' || method === 'warn')) {
+            metadata.analysis = await this.analyzeWithAI(metadata);
             // Print AI analysis immediately
             originalConsole.info(`[Mosqit AI Analysis] ${metadata.analysis}`);
           } else if (method === 'error' || method === 'warn') {
-            metadata.analysis = self.analyzeWithPatterns(metadata);
+            metadata.analysis = this.analyzeWithPatterns(metadata);
             // Print pattern-based analysis
             originalConsole.info(`[Mosqit Analysis] ${metadata.analysis}`);
           }
 
-          self.storeLog(metadata);
+          this.storeLog(metadata);
         };
       });
     }

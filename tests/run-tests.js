@@ -5,11 +5,9 @@
  * Runs all test suites with proper reporting
  */
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
+/* eslint-disable @typescript-eslint/no-require-imports */
 const { execSync } = require('child_process');
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const fs = require('fs');
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const path = require('path');
 
 // Colors for console output

@@ -917,7 +917,7 @@ console.warn("API response slow: 3.2s");
               </ul>
               <div className="button-group" style={{ justifyContent: 'center' }}>
                 <a
-                  href="https://www.buymeacoffee.com/mosqit"
+                  href="https://buymeacoffee.com/mosqit"
                   className="btn"
                   style={{
                     background: '#FFDD00',

@@ -9,7 +9,7 @@
 
 <div align="center">
 
-[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Support%20Development-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/mosqit)
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Support%20Development-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/mosqit)
 [![GitHub Sponsors](https://img.shields.io/badge/Sponsor%20on%20GitHub-❤️-EA4AAA?style=for-the-badge&logo=github-sponsors)](https://github.com/sponsors/ma-za-kpe)
 
 *Mosqit is free and open source forever. If you find it helpful, consider supporting the development!*

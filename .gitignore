@@ -66,3 +66,6 @@ debug/
 
 # Production builds
 mosqit-extension-*.zip
+
+# Documentation (excluded from push)
+docs/

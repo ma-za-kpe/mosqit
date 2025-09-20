@@ -1,85 +1,117 @@
-# Privacy Policy for Mosqit
+# Privacy Policy for Mosqit Chrome Extension
 
-**Last Updated**: October 2024
+**Last Updated: January 2025**
 
 ## Overview
 
-Mosqit is committed to protecting your privacy. This privacy policy explains how our Chrome extension handles your data.
+Mosqit is committed to protecting your privacy. This extension operates with a **privacy-first** design, using Chrome's built-in AI capabilities to ensure all data processing happens locally on your device.
 
 ## Data Collection
 
-**We do NOT collect any data.**
+### What We DON'T Collect
+- ❌ Personal information
+- ❌ Source code or debugging data
+- ❌ Error messages or stack traces
+- ❌ User interactions or behavior
+- ❌ Analytics or telemetry
+- ❌ Any data whatsoever
 
-Mosqit operates entirely on your local device. All processing, analysis, and storage happens locally in your browser.
+### What Stays on Your Device
+- ✅ All error analysis
+- ✅ Debugging context
+- ✅ User preferences
+- ✅ Pattern detection data
+- ✅ AI processing
 
-## What Stays on Your Device
+## How Mosqit Works
 
-- All console logs and error messages
-- AI analysis results
-- Error patterns and debugging history
-- User preferences and settings
-- Stack traces and debugging information
+1. **Local Processing Only**: All AI analysis uses Chrome's built-in Gemini Nano model, which runs entirely on your device
+2. **No External APIs**: The extension never makes requests to external servers for analysis
+3. **No Data Transmission**: Your code, errors, and debugging information never leave your computer
+4. **Temporary Memory**: Debugging context is only kept in memory during your session and cleared when you close the tab
 
-## AI Processing
+## Chrome's Built-in AI
 
-Mosqit uses Chrome's built-in Gemini Nano model which runs entirely on your device. This means:
+Mosqit leverages Chrome's Gemini Nano model which:
+- Runs completely offline on your device
+- Does not send data to Google or any other servers
+- Requires explicit user permission to enable
+- Can be disabled at any time through Chrome settings
 
-- No data is sent to external AI services
-- No API calls to cloud services
-- All AI processing happens locally
-- Your code never leaves your machine
+## Permissions Explained
 
-## Third-Party Services
+### "Access to all websites" (<all_urls>)
+- **Why needed**: To detect and analyze errors on any website you're debugging
+- **What it does**: Injects the debugging assistant into web pages
+- **What it doesn't do**: Does not collect or transmit any website data
 
-Mosqit does not use any third-party services, analytics, or tracking tools.
+### Storage Permission
+- **Why needed**: To save your preferences locally
+- **What it does**: Stores settings in your browser's local storage
+- **What it doesn't do**: Does not sync or transmit data
 
-## Permissions Used
-
-- **tabs**: To inject debugging scripts into web pages
-- **activeTab**: To capture console output from the current tab
-- **storage**: To save your preferences locally
-- **scripting**: To inject the logger into pages
-- **host_permissions**: To debug any website you visit
-
-All permissions are used solely for debugging functionality and do not transmit data externally.
-
-## Data Storage
-
-All data is stored locally using Chrome's storage API:
-- Preferences are stored in local storage
-- No cloud synchronization
-- Data remains on your device
-- Clearing browser data removes all Mosqit data
-
-## Updates
-
-This privacy policy may be updated to reflect changes in the extension. Updates will be posted to our GitHub repository.
+### Scripting Permission
+- **Why needed**: To inject the error monitoring script
+- **What it does**: Adds debugging capabilities to web pages
+- **What it doesn't do**: Does not modify website functionality
 
 ## Open Source
 
-Mosqit is open source. You can review our code at: https://github.com/ma-za-kpe/mosqit
+Mosqit is open source. You can:
+- Review our code: https://github.com/yourusername/mosqit
+- Verify our privacy claims
+- Contribute to development
+- Fork and customize for your needs
+
+## Updates
+
+This extension may receive updates through the Chrome Web Store to:
+- Fix bugs
+- Add new features
+- Improve AI analysis
+- Enhance performance
+
+Updates never change our privacy commitment: **your data stays on your device**.
+
+## Children's Privacy
+
+This extension is a developer tool not intended for use by children under 13.
 
 ## Contact
 
-For privacy concerns or questions, please open an issue at: https://github.com/ma-za-kpe/mosqit/issues
+For privacy questions or concerns:
+- Email: privacy@mosqit.dev
+- GitHub Issues: https://github.com/yourusername/mosqit/issues
+- Documentation: https://github.com/yourusername/mosqit
 
-## Compliance
+## Changes to This Policy
 
-Mosqit complies with:
-- Chrome Web Store Developer Program Policies
-- Chrome Extension privacy best practices
-- GDPR (by not collecting any personal data)
+Any changes to this privacy policy will be:
+1. Posted on our GitHub repository
+2. Included in extension update notes
+3. Maintain or strengthen privacy protections
 
 ## Your Rights
 
-Since we don't collect any data, there's nothing to:
-- Request access to
-- Request deletion of
-- Request correction of
-- Port to another service
+You have the right to:
+- Use the extension without any data collection
+- Uninstall at any time
+- Review the source code
+- Fork and modify the extension
+- Report privacy concerns
 
-Your debugging data stays entirely under your control on your device.
+## Compliance
+
+This extension complies with:
+- Chrome Web Store Developer Program Policies
+- GDPR (General Data Protection Regulation)
+- CCPA (California Consumer Privacy Act)
+- Privacy by Design principles
+
+## Summary
+
+**Mosqit collects absolutely no data. Everything happens locally on your device. Period.**
 
 ---
 
-**TL;DR**: We don't collect, store, or transmit any of your data. Everything happens locally on your device.
+*This privacy policy is effective as of January 2025 and will remain in effect except with respect to any changes in its provisions in the future, which will be in effect immediately after being posted on this page.*

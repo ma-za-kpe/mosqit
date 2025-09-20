@@ -1,14 +1,15 @@
 #!/usr/bin/env node
+/* eslint-disable @typescript-eslint/no-require-imports */
 
 /**
- * Simple build script for Mosqit Chrome Extension
- * Copies JavaScript files directly without compilation
+ * Proper build script for Mosqit Chrome Extension using TypeScript compiler
  */
 
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 
-console.log('🦟 Building Mosqit Chrome Extension...');
+console.log('🔨 Building Chrome Extension with TypeScript...');
 
 // Directories
 const distDir = path.join(process.cwd(), 'dist');
@@ -25,20 +26,74 @@ fs.mkdirSync(extensionDir, { recursive: true });
 const iconsDir = path.join(extensionDir, 'icons');
 fs.mkdirSync(iconsDir, { recursive: true });
 
-// Step 1: Copy content script
-const contentScript = path.join(srcDir, 'content', 'mosqit-content.js');
-if (fs.existsSync(contentScript)) {
-  fs.copyFileSync(contentScript, path.join(extensionDir, 'content.js'));
-  console.log('✅ Content script copied');
-} else {
-  console.warn('⚠️ Content script not found, creating minimal version');
-  // Minimal content script as fallback
-  const minimalContent = `
-// Mosqit Content Script
-console.log('[Mosqit] 🦟 Extension loaded');
+// Step 1: Compile TypeScript files individually
+console.log('📦 Compiling TypeScript files...');
+
+// Compile content script with mosqit-logger-ai
+const contentFiles = [
+  'content/mosqit-logger-ai.ts',
+  'content/mosqit-logger.ts',
+  'content/content-script.ts'
+];
+
+// Create a combined content script
+let contentJS = `// Mosqit Content Script Bundle
+(function() {
+  'use strict';
+
 `;
-  fs.writeFileSync(path.join(extensionDir, 'content.js'), minimalContent);
+
+// First, add the AI logger
+if (fs.existsSync(path.join(srcDir, 'content', 'mosqit-logger-ai.ts'))) {
+  const aiContent = fs.readFileSync(path.join(srcDir, 'content', 'mosqit-logger-ai.ts'), 'utf8');
+
+  // Convert TypeScript to JavaScript (simplified)
+  const jsContent = aiContent
+    // Remove imports/exports
+    .replace(/^import\s+.*?;?\s*$/gm, '')
+    .replace(/^export\s+default\s+/gm, '')
+    .replace(/^export\s+/gm, '')
+    // Remove TypeScript type annotations
+    .replace(/:\s*LogMetadata(\[\])?/g, '')
+    .replace(/:\s*string(\[\])?/g, '')
+    .replace(/:\s*number(\[\])?/g, '')
+    .replace(/:\s*boolean(\[\])?/g, '')
+    .replace(/:\s*any(\[\])?/g, '')
+    .replace(/:\s*unknown(\[\])?/g, '')
+    .replace(/:\s*void/g, '')
+    .replace(/:\s*Promise<[^>]+>/g, '')
+    .replace(/:\s*Map<[^>]+>/g, '')
+    .replace(/:\s*Record<[^>]+>/g, '')
+    // Remove interface definitions
+    .replace(/interface\s+\w+\s*{[^}]*}/gs, '')
+    // Remove declare statements
+    .replace(/^declare\s+.*?[;{].*?$/gm, '')
+    .replace(/^declare\s+const.*?\n}\s*;?$/gsm, '')
+    // Fix optional parameters
+    .replace(/(\w+)\?:/g, '$1:')
+    // Remove generic type parameters
+    .replace(/<[^>]+>/g, '')
+    // Clean up access modifiers
+    .replace(/\b(private|public|protected)\s+/g, '')
+    // Remove readonly
+    .replace(/\breadonly\s+/g, '')
+    // Fix as any casts
+    .replace(/\s+as\s+any/g, '')
+    .replace(/\s+as\s+\w+/g, '');
+
+  contentJS += jsContent;
 }
+
+contentJS += `
+  // Initialize Mosqit
+  if (typeof MosqitLoggerAI !== 'undefined') {
+    console.log('[Mosqit] Initializing AI-powered logger...');
+    new MosqitLoggerAI();
+  }
+})();
+`;
+
+fs.writeFileSync(path.join(extensionDir, 'content.js'), contentJS);
 
 // Step 2: Create background script
 const backgroundJS = `// Mosqit Background Service Worker
@@ -82,7 +137,6 @@ chrome.runtime.onInstalled.addListener(() => {
 `;
 
 fs.writeFileSync(path.join(extensionDir, 'background.js'), backgroundJS);
-console.log('✅ Background script created');
 
 // Step 3: Create manifest.json
 const manifest = {
@@ -129,7 +183,6 @@ fs.writeFileSync(
   path.join(extensionDir, 'manifest.json'),
   JSON.stringify(manifest, null, 2)
 );
-console.log('✅ Manifest created');
 
 // Step 4: Create popup.html
 const popupHTML = `<!DOCTYPE html>
@@ -209,75 +262,63 @@ const popupHTML = `<!DOCTYPE html>
       <p id="statusText">Checking AI status...</p>
     </div>
     <p>AI-powered debugging assistant that analyzes your console logs in real-time.</p>
-    <button id="dashboardBtn">Open Dashboard</button>
-    <button id="statusBtn">Check AI Status</button>
+    <button onclick="openDashboard()">Open Dashboard</button>
     <div class="footer">
       <p>View console for AI analysis</p>
       <p>Chrome 128+ with AI flags enabled</p>
     </div>
   </div>
-  <script src="popup.js"></script>
+  <script>
+    function openDashboard() {
+      chrome.tabs.create({ url: 'https://mosqit.vercel.app' });
+    }
+
+    // Check AI status
+    chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+      chrome.scripting.executeScript({
+        target: {tabId: tabs[0].id},
+        func: () => {
+          return typeof Writer !== 'undefined' || typeof LanguageModel !== 'undefined';
+        }
+      }, (results) => {
+        const hasAI = results && results[0]?.result;
+        const status = document.getElementById('status');
+        const statusText = document.getElementById('statusText');
+
+        if (hasAI) {
+          status.className = 'status ai-ready';
+          statusText.textContent = '✅ Chrome AI detected - Enhanced analysis active';
+        } else {
+          status.className = 'status ai-fallback';
+          statusText.textContent = '⚠️ Using pattern-based analysis (AI not detected)';
+        }
+      });
+    });
+  </script>
 </body>
 </html>`;
 
 fs.writeFileSync(path.join(extensionDir, 'popup.html'), popupHTML);
-console.log('✅ Popup created');
 
-// Step 4b: Create popup.js
-const popupJS = `// Popup script for Mosqit Extension
+// Step 5: Create icon files (simple mosquito SVG)
+const createIcon = (size) => {
+  const svg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
+  <rect width="${size}" height="${size}" fill="#667eea" rx="${size/8}"/>
+  <text x="50%" y="50%" font-size="${size * 0.6}" text-anchor="middle" dy=".35em" fill="white" font-family="system-ui">🦟</text>
+</svg>`;
+  return svg;
+};
 
-function openDashboard() {
-  chrome.tabs.create({ url: 'https://mosqit.vercel.app' });
-}
-
-function checkStatus() {
-  chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-    chrome.scripting.executeScript({
-      target: {tabId: tabs[0].id},
-      func: () => {
-        return typeof Writer !== 'undefined' || typeof Summarizer !== 'undefined';
-      }
-    }, (results) => {
-      const hasAI = results && results[0]?.result;
-      const status = document.getElementById('status');
-      const statusText = document.getElementById('statusText');
-
-      if (hasAI) {
-        status.className = 'status ai-ready';
-        statusText.textContent = '✅ Chrome AI detected - Enhanced analysis active';
-      } else {
-        status.className = 'status ai-fallback';
-        statusText.textContent = '⚠️ Using pattern-based analysis (AI not detected)';
-      }
-    });
-  });
-}
-
-// Event listeners
-document.getElementById('dashboardBtn').addEventListener('click', openDashboard);
-document.getElementById('statusBtn').addEventListener('click', checkStatus);
-
-// Check on load
-window.addEventListener('load', checkStatus);
-`;
-
-fs.writeFileSync(path.join(extensionDir, 'popup.js'), popupJS);
-console.log('✅ Popup script created');
-
-// Step 5: Create placeholder icons
-// In production, you'd use actual PNG files
-const iconSizes = [16, 48, 128];
-iconSizes.forEach(size => {
-  // Create a simple placeholder file
-  const iconData = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]); // PNG header
-  fs.writeFileSync(path.join(iconsDir, `icon${size}.png`), iconData);
+// For now, create placeholder PNG files
+[16, 48, 128].forEach(size => {
+  // In production, you'd use a proper SVG to PNG converter
+  // For now, just create a placeholder file
+  fs.writeFileSync(
+    path.join(iconsDir, `icon${size}.png`),
+    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]) // PNG header
+  );
 });
-console.log('✅ Icons created');
 
-console.log('\n🎉 Build complete!');
-console.log(`📁 Extension ready at: ${extensionDir}`);
-console.log('\n📋 To install:');
-console.log('1. Open chrome://extensions/');
-console.log('2. Enable "Developer mode"');
-console.log('3. Click "Load unpacked"');
-console.log(`4. Select: ${extensionDir}`);
+console.log('✅ Chrome Extension build complete!');
+console.log(`📁 Output directory: ${extensionDir}`);

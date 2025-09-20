@@ -20,6 +20,8 @@
 
 **Mosqit** revolutionizes frontend debugging by combining Android Logcat-inspired logging with Chrome's built-in AI APIs (Gemini Nano). It provides intelligent error analysis, pattern detection, and actionable fix suggestions directly in your browser—all while maintaining privacy through on-device AI processing.
 
+> ⚠️ **IMPORTANT FOR DEVELOPERS**: Chrome AI APIs are experimental and require specific setup. See [Chrome AI Setup](#chrome-ai-setup) section below.
+
 ### 🏆 Google Chrome Built-in AI Challenge 2025
 - **Submission Deadline**: October 31, 2025
 - **Target Prizes**: $14,000 Most Helpful, $9,000 Multimodal AI, $9,000 Hybrid AI
@@ -67,24 +69,28 @@ console.log = function(...args) {
 
 ### 3. 🤖 **Chrome Built-in AI Integration**
 
-#### Feature Detection (Recommended Approach)
+#### Feature Detection (Correct Implementation)
 ```javascript
-// Always check availability before use
-if ('ai' in self && self.ai?.languageModel) {
-  const session = await ai.languageModel.create();
-  const analysis = await session.prompt(errorPrompt);
-  session.destroy();
+// Chrome AI APIs are global objects, NOT under self.ai
+if (typeof Writer !== 'undefined') {
+  const availability = await Writer.availability();
+  if (availability === 'available') {
+    const writer = await Writer.create();
+    const analysis = await writer.write(errorPrompt);
+    writer.destroy();
+  }
 } else {
   // Fallback to local Logcat-style analysis
   return generateFallbackAnalysis(error);
 }
 ```
 
-#### Supported APIs
-- **Prompt API** (Chrome 138+): Error analysis and insights
-- **Summarizer API**: Pattern summarization across errors
-- **Writer API** (Future): Generate fix suggestions
-- **Rewriter API** (Future): Improve error messages
+#### Supported Chrome AI APIs
+- **Writer API**: Bug report generation and analysis ✅
+- **Rewriter API**: Error message improvement (requires flag)
+- **Summarizer API**: Pattern summarization (requires flag)
+
+> 🚨 **Note**: These are separate global objects (`Writer`, `Rewriter`, `Summarizer`), NOT under `window.ai` or `self.ai`
 
 ### 4. 📊 **Pattern Detection & Insights**
 
@@ -102,10 +108,47 @@ if ('ai' in self && self.ai?.languageModel) {
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Chrome 138+ (for AI features)
-- Chrome 111+ (for MAIN world scripts)
+- Chrome 128+ (Chrome 140+ recommended)
 - Node.js 18+
 - npm 9+
+- **Chrome AI flags enabled** (see setup below)
+
+## 🔧 Chrome AI Setup
+
+### Step 1: Enable Chrome AI Flags
+
+1. Open Chrome and navigate to `chrome://flags`
+2. Enable these flags:
+   - `#optimization-guide-on-device-model` → **Enabled BypassPerfRequirement**
+   - `#writer-api-for-gemini-nano` → **Enabled**
+   - `#rewriter-api-for-gemini-nano` → **Enabled** (optional)
+   - `#summarization-api-for-gemini-nano` → **Enabled** (optional)
+3. **Restart Chrome completely** (not just the tab)
+
+### Step 2: Verify AI Availability
+
+1. Open DevTools Console (F12)
+2. Type: `await Writer.availability()`
+3. Expected responses:
+   - `"available"` - Model is ready ✅
+   - `"downloadable"` - Need to download model (2GB)
+   - `"unavailable"` - Not supported or flags not enabled
+
+### Step 3: Download Gemini Nano Model
+
+If you get `"downloadable"`:
+```javascript
+// In DevTools console
+const writer = await Writer.create();
+// This triggers the 2GB model download
+// Check progress at chrome://on-device-internals
+```
+
+### ⚠️ Common Issues
+
+- **"Writer is not defined"**: Flags not enabled or Chrome < 128
+- **Model not downloading**: Need 22GB+ free disk space
+- **APIs not working**: Restart Chrome completely after enabling flags
 
 ### Installation
 
@@ -324,10 +367,10 @@ npm run format
 ## 🌟 Future Roadmap
 
 ### Phase 2: Enhanced AI Features
-- [ ] Summarizer API for pattern analysis
-- [ ] Writer API for fix generation
-- [ ] Rewriter API for clearer errors
-- [ ] Translator API for i18n support
+- [x] Writer API for bug analysis (IMPLEMENTED)
+- [ ] Rewriter API for clearer errors (flag required)
+- [ ] Summarizer API for pattern analysis (flag required)
+- [ ] Full multimodal support
 
 ### Phase 3: Multimodal Capabilities
 - [ ] Screenshot analysis for UI errors
@@ -354,7 +397,14 @@ MIT License - See [LICENSE](LICENSE) for details
 
 ## 🔗 Resources
 
-- [Chrome AI Documentation](https://developer.chrome.com/docs/ai)
+### Chrome AI Documentation
+- [Writer API Guide](https://developer.chrome.com/docs/ai/writer-api)
+- [Rewriter API Guide](https://developer.chrome.com/docs/ai/rewriter-api)
+- [Summarizer API Guide](https://developer.chrome.com/docs/ai/summarizer-api)
+- [Chrome AI Overview](https://developer.chrome.com/docs/ai/built-in)
+- [On-Device Model Status](chrome://on-device-internals)
+
+### Extension Development
 - [Chrome Extensions Guide](https://developer.chrome.com/docs/extensions)
 - [Challenge Requirements](https://googlechromeai2025.devpost.com/)
 - [Manifest V3 Migration](https://developer.chrome.com/docs/extensions/develop/migrate)

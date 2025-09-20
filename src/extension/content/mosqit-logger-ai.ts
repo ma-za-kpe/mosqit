@@ -29,8 +29,9 @@ interface LogMetadata {
   patterns?: string[]; // Recurring patterns detected
 }
 
-declare const Writer: unknown;
-declare const self: Window & { ai?: unknown };
+// Chrome AI APIs are exposed as global objects (unused - keeping for reference)
+// declare const Writer: { availability(): Promise<string>; create(options?: any): Promise<any>; };
+// declare const LanguageModel: { availability(): Promise<string>; create(options?: any): Promise<any>; };
 
 class MosqitLoggerAI {
   private originalConsole = {
@@ -60,48 +61,86 @@ class MosqitLoggerAI {
   }
 
   private async initializeAI() {
-    // Check for Writer API (EPP feature, best for structured output)
-    if (typeof Writer !== 'undefined' && Writer !== null) {
-      try {
-        const availability = await (Writer as any).availability({ outputLanguage: 'en' });
+    // Check for Chrome AI APIs under self.ai namespace
+    if ('ai' in self && self.ai) {
+      // Check for Writer API (best for structured output)
+      if ((self.ai as any).writer) {
+        try {
+          const capabilities = await (self.ai as any).writer.capabilities();
+          console.info('[Mosqit] Writer API capabilities:', capabilities);
 
-        if (availability === 'available') {
-          this.writerSession = await (Writer as any).create({
-            outputLanguage: 'en',
-            tone: 'neutral',
-            format: 'plain-text',
-            length: 'short',
-            sharedContext: 'You are Mosqit, an intelligent debugging assistant. Analyze any log output, bug, performance issue, warning, or unexpected behavior. Provide actionable insights for debugging. Be concise and specific.'
-          });
+          if (capabilities.available === 'readily') {
+            this.writerSession = await (self.ai as any).writer.create({
+              sharedContext: 'You are Mosqit, an intelligent debugging assistant. Analyze any log output, bug, performance issue, warning, or unexpected behavior. Provide actionable insights for debugging. Be concise and specific.'
+            });
 
-          this.aiAvailable = true;
-          console.info('[Mosqit] ✅ Chrome Writer API ready - AI-powered analysis enabled!');
-        } else if (availability === 'downloadable') {
-          console.info('[Mosqit] 📥 Chrome AI model available for download (2GB)');
-          // Could trigger download here if desired
-        } else {
-          console.info('[Mosqit] ⏳ Chrome AI model downloading or not available');
+            this.aiAvailable = true;
+            console.info('[Mosqit] ✅ Chrome Writer API ready - AI-powered analysis enabled!');
+          } else if (capabilities.available === 'after-download') {
+            console.info('[Mosqit] 📥 Chrome AI model available for download (2GB)');
+            console.info('[Mosqit] Attempting to trigger download...');
+            // Try to create session to trigger download
+            try {
+              this.writerSession = await (self.ai as any).writer.create();
+              this.aiAvailable = true;
+              console.info('[Mosqit] ✅ Writer API session created!');
+            } catch {
+              console.info('[Mosqit] Model downloading, please wait...');
+            }
+          } else {
+            console.info('[Mosqit] ⏳ Writer API not available:', capabilities.available);
+          }
+        } catch (error) {
+          console.warn('[Mosqit] Writer API check failed:', error);
         }
-      } catch (error) {
-        console.warn('[Mosqit] Writer API check failed:', error);
       }
-    }
 
-    // Fallback to Prompt API if available
-    if (!this.aiAvailable && 'ai' in self && (self.ai as any)?.languageModel) {
-      try {
-        const capabilities = await (self.ai as any).languageModel.capabilities();
-        if (capabilities.available === 'readily') {
-          this.aiAvailable = true;
-          console.info('[Mosqit] ✅ Chrome Prompt API ready - AI analysis enabled');
+      // Fallback to Prompt API if Writer not available
+      if (!this.aiAvailable && (self.ai as any).languageModel) {
+        try {
+          const capabilities = await (self.ai as any).languageModel.capabilities();
+          console.info('[Mosqit] Prompt API capabilities:', capabilities);
+
+          if (capabilities.available === 'readily') {
+            this.aiAvailable = true;
+            console.info('[Mosqit] ✅ Chrome Prompt API ready - AI analysis enabled');
+          } else if (capabilities.available === 'after-download') {
+            console.info('[Mosqit] 📥 Prompt API model needs download');
+            // Try to create session to trigger download
+            try {
+              await (self.ai as any).languageModel.create();
+              this.aiAvailable = true;
+              console.info('[Mosqit] ✅ Prompt API session created!');
+            } catch {
+              console.info('[Mosqit] Model downloading, please wait...');
+            }
+          }
+        } catch (error) {
+          console.warn('[Mosqit] Prompt API check failed:', error);
         }
-      } catch (error) {
-        console.warn('[Mosqit] Prompt API check failed:', error);
       }
+
+      // Check for Summarizer API as another fallback
+      if (!this.aiAvailable && (self.ai as any).summarizer) {
+        try {
+          const capabilities = await (self.ai as any).summarizer.capabilities();
+          console.info('[Mosqit] Summarizer API capabilities:', capabilities);
+
+          if (capabilities.available === 'readily') {
+            this.aiAvailable = true;
+            console.info('[Mosqit] ✅ Chrome Summarizer API ready - AI analysis enabled');
+          }
+        } catch (error) {
+          console.warn('[Mosqit] Summarizer API check failed:', error);
+        }
+      }
+    } else {
+      console.info('[Mosqit] Chrome AI APIs not found. Ensure Chrome 128+ and flags enabled.');
     }
 
     if (!this.aiAvailable) {
       console.info('[Mosqit] 🔧 Using Logcat-inspired fallback analysis (no AI)');
+      console.info('[Mosqit] To enable AI: chrome://flags → Enable "Prompt API for Gemini Nano"');
     }
   }
 
@@ -131,7 +170,7 @@ class MosqitLoggerAI {
 
   private async performAIAnalysis(metadata: LogMetadata): Promise<string> {
     // Try Writer API first (best for structured output)
-    if (this.writerSession) {
+    if (this.writerSession && (self.ai as any)?.writer) {
       try {
         const prompt = `Analyze this debugging output and provide insights:
 
@@ -143,9 +182,7 @@ ${metadata.domNode ? `UI Element: <${metadata.domNode.tag}${metadata.domNode.id 
 Provide: 1) What's happening 2) Potential issues or root cause 3) Actionable next steps for debugging
 Be concise - max 3 sentences.`;
 
-        const response = await (this.writerSession as any).write(prompt, {
-          context: `Stack trace: ${metadata.stack?.substring(0, 200) || 'none'}`
-        });
+        const response = await (this.writerSession as any).write(prompt);
 
         // Format for Logcat-style output
         return this.formatAIResponse(response, metadata);
@@ -173,6 +210,26 @@ Provide debugging insights in 1-2 sentences.`;
         return this.formatAIResponse(response, metadata);
       } catch (error) {
         console.debug('[Mosqit] Prompt API analysis failed:', error);
+      }
+    }
+
+    // Try Summarizer API as another fallback
+    if (this.aiAvailable && (self.ai as any)?.summarizer) {
+      try {
+        const session = await (self.ai as any).summarizer.create({
+          type: 'tl;dr',
+          format: 'plain-text',
+          length: 'short'
+        });
+
+        // Create a context for the error
+        const errorContext = `${metadata.level.toUpperCase()} at ${metadata.file || 'unknown'}:${metadata.line || '?'}: ${metadata.message}. This is a debugging output that needs analysis.`;
+        const response = await session.summarize(errorContext);
+        session.destroy();
+
+        return this.formatAIResponse(response, metadata);
+      } catch (error) {
+        console.debug('[Mosqit] Summarizer API analysis failed:', error);
       }
     }
 

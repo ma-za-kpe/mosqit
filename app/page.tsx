@@ -580,6 +580,44 @@ export default function Home() {
             </div>
           </div>
 
+          {/* Chrome AI Setup Warning */}
+          <div className="card" style={{ background: 'linear-gradient(135deg, #FFF9C4, #FFE082)', border: '2px solid #F57C00' }}>
+            <h2 style={{ color: '#E65100', marginBottom: '20px' }}>⚠️ Chrome AI Setup Required</h2>
+            <p style={{ color: '#BF360C', fontWeight: '600', marginBottom: '15px' }}>
+              🦟 Mosqit uses Chrome&apos;s experimental AI APIs. These require specific setup:
+            </p>
+            <div style={{ background: 'white', padding: '20px', borderRadius: '10px', marginBottom: '15px' }}>
+              <h3 style={{ color: '#E65100', marginBottom: '15px' }}>Quick Setup (3 Steps):</h3>
+              <ol style={{ color: '#424242', lineHeight: '1.8' }}>
+                <li><strong>Chrome Version:</strong> You need Chrome 128+ (you probably have 140+)</li>
+                <li><strong>Enable AI Flags:</strong> Go to <code style={{ background: '#FFF3E0', padding: '2px 6px', borderRadius: '3px' }}>chrome://flags</code>
+                  <ul style={{ marginTop: '8px', marginBottom: '8px' }}>
+                    <li><code>#optimization-guide-on-device-model</code> → <strong>Enabled BypassPerfRequirement</strong></li>
+                    <li><code>#writer-api-for-gemini-nano</code> → <strong>Enabled</strong></li>
+                    <li><code>#rewriter-api-for-gemini-nano</code> → <strong>Enabled</strong> (optional)</li>
+                    <li><code>#summarization-api-for-gemini-nano</code> → <strong>Enabled</strong> (optional)</li>
+                  </ul>
+                </li>
+                <li><strong>Restart Chrome Completely</strong> (not just the tab)</li>
+              </ol>
+            </div>
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              <a href="/test/chrome-ai-status.html" className="btn btn-primary" style={{ background: '#E65100' }}>
+                🔍 Check Your AI Status
+              </a>
+              <a href="chrome://flags" className="btn btn-secondary" style={{ background: '#F57C00', color: 'white' }}>
+                ⚙️ Open Chrome Flags
+              </a>
+              <a href="https://developer.chrome.com/docs/ai/writer-api" className="btn btn-secondary" target="_blank" rel="noopener noreferrer">
+                📚 Chrome AI Docs
+              </a>
+            </div>
+            <p style={{ color: '#795548', fontSize: '0.9rem', marginTop: '15px' }}>
+              <strong>Note:</strong> The AI model (Gemini Nano) is ~2GB. It downloads automatically when you first use it.
+              Without AI, Mosqit still works using pattern-based analysis! 🦟
+            </p>
+          </div>
+
           <div className="card">
             <h2 style={{ color: '#2d3748', marginBottom: '20px' }}>✨ Key Features</h2>
             <div className="features-grid">

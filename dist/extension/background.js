@@ -1,160 +1,38 @@
-/**
- * Mosqit Extension Background Service Worker
- */
+// Mosqit Background Service Worker
+console.log('[Mosqit] Background service worker loaded');
 
-;
+// Storage for logs
+const logStorage = new Map();
+const maxLogsPerTab = 1000;
 
-
-
-class BackgroundService {
-  private storage;
-  private connections<number, chrome.runtime.Port> = new Map();
-
-  constructor() {
-    this.storage = new LogStorage();
-    this.setupListeners();
-  }
-
-  private setupListeners() {
-    // Listen for messages from content scripts
-    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-      if (message.type === 'MOSQIT_LOG') {
-        this.handleLog(message.data, sender.tab);
-        sendResponse({ success });
+// Message handler
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === 'MOSQIT_LOG') {
+    const tabId = sender.tab?.id;
+    if (tabId) {
+      if (!logStorage.has(tabId)) {
+        logStorage.set(tabId, []);
       }
-      return true;
-    });
-
-    // Listen for connections from DevTools
-    chrome.runtime.onConnect.addListener((port) => {
-      if (port.name === 'mosqit-devtools') {
-        const tabId = port.sender?.tab?.id;
-        if (tabId) {
-          this.connections.set(tabId, port);
-
-          port.onDisconnect.addListener(() => {
-            this.connections.delete(tabId);
-          });
-
-          port.onMessage.addListener((msg) => {
-            this.handleDevToolsMessage(msg, tabId);
-          });
-        }
+      const logs = logStorage.get(tabId);
+      logs.push(message.data);
+      if (logs.length > maxLogsPerTab) {
+        logs.shift();
       }
-    });
-
-    // Listen for tab updates
-    chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
-      if (changeInfo.status === 'complete') {
-        this.injectContentScript(tabId);
-      }
-    });
-
-    // Listen for extension icon click
-    chrome.action.onClicked.addListener((tab) => {
-      if (tab.id) {
-        this.toggleLogger(tab.id);
-      }
-    });
-  }
-
-  private async handleLog(logData<string, unknown>, tab?.tabs.Tab) {
-    // Store log
-    await this.storage.addLog(logData);
-
-    // Add tab info
-    const enrichedLog = {
-      ...logData,
-      tab: {
-        id?.id,
-        title?.title,
-        url?.url,
-      },
-    };
-
-    // Send to DevTools if connected
-    if (tab?.id && this.connections.has(tab.id)) {
-      const port = this.connections.get(tab.id);
-      port?.postMessage({
-        type: 'NEW_LOG',
-        data,
-      });
+      sendResponse({ success: true });
     }
-
-    // Update badge
-    if (tab?.id) {
-      this.updateBadge(tab.id);
-    }
+  } else if (message.type === 'GET_LOGS') {
+    const tabId = sender.tab?.id;
+    const logs = logStorage.get(tabId) || [];
+    sendResponse({ logs });
   }
+  return true;
+});
 
-  private handleDevToolsMessage(message: { type; data? }, tabId) {
-    switch (message.type) {
-      case 'GET_LOGS'.sendLogsToDevTools(tabId);
-        break;
-      case 'CLEAR_LOGS'.clearLogs(tabId);
-        break;
-      case 'EXPORT_LOGS'.exportLogs(tabId);
-        break;
-    }
-  }
+// Clear logs when tab is closed
+chrome.tabs.onRemoved.addListener((tabId) => {
+  logStorage.delete(tabId);
+});
 
-  private async sendLogsToDevTools(tabId) {
-    const logs = await this.storage.getLogs(tabId);
-    const port = this.connections.get(tabId);
-
-    port?.postMessage({
-      type: 'LOGS_DATA',
-      data,
-    });
-  }
-
-  private async clearLogs(tabId) {
-    await this.storage.clearLogs(tabId);
-    this.updateBadge(tabId, 0);
-  }
-
-  private async exportLogs(tabId) {
-    const logs = await this.storage.getLogs(tabId);
-    const dataStr = JSON.stringify(logs, null, 2);
-    const dataUri = 'data/json;charset=utf-8,' + encodeURIComponent(dataStr);
-
-    chrome.downloads.download({
-      url,
-      filename: `mosqit-logs-${Date.now()}.json`,
-    });
-  }
-
-  private async injectContentScript(tabId) {
-    try {
-      await chrome.scripting.executeScript({
-        target: { tabId },
-        files: ['content.js'],
-      });
-    } catch (error) {
-      console.error('Failed to inject content script:', error);
-    }
-  }
-
-  private async toggleLogger(tabId) {
-    chrome.tabs.sendMessage(tabId, {
-      type: 'TOGGLE_LOGGER',
-    });
-  }
-
-  private async updateBadge(tabId, count?) {
-    const logCount = count ?? (await this.storage.getLogCount(tabId));
-
-    chrome.action.setBadgeText({
-      text > 0 ? String(logCount) : '',
-      tabId,
-    });
-
-    chrome.action.setBadgeBackgroundColor({
-      color: '#FF5252',
-      tabId,
-    });
-  }
-}
-
-// Initialize background service
-new BackgroundService();
+chrome.runtime.onInstalled.addListener(() => {
+  console.log('[Mosqit] Extension installed successfully');
+});

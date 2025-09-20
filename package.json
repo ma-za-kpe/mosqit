@@ -37,7 +37,11 @@
     "deploy:production": "vercel --prod",
     "env:check": "node scripts/check-env.js",
     "clean": "rm -rf .next dist node_modules/.cache",
-    "clean:all": "rm -rf .next dist node_modules package-lock.json"
+    "clean:all": "rm -rf .next dist node_modules package-lock.json",
+    "version:patch": "node scripts/bump-version.js patch",
+    "version:minor": "node scripts/bump-version.js minor",
+    "version:major": "node scripts/bump-version.js major",
+    "release": "npm run build:extension && npm run version:patch && git push origin main --tags"
   },
   "dependencies": {
     "@vercel/analytics": "^1.5.0",

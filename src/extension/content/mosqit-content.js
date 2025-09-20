@@ -16,6 +16,16 @@
       this.writerSession = null;
       this.errorPatterns = new Map();
 
+      // Context tracking
+      this.recentLogs = []; // Last 10 logs before an error
+      this.maxRecentLogs = 10;
+      this.lastUserAction = null;
+      this.lastErrorTime = 0;
+      this.lastError = null;
+      this.errorContext = new Map(); // Store context for each error
+      this.userActionHistory = [];
+      this.maxActionHistory = 5;
+
       this.init();
     }
 
@@ -23,7 +33,53 @@
       await this.checkChromeAI();
       this.overrideConsoleMethods();
       this.setupErrorListener();
+      this.setupUserActionTracking();
       console.log('[Mosqit] ✅ Logger initialized');
+    }
+
+    setupUserActionTracking() {
+      // Track clicks
+      document.addEventListener('click', (e) => {
+        const target = e.target;
+        const identifier = target.id || target.className || target.tagName;
+        const text = target.textContent?.substring(0, 30) || '';
+        this.lastUserAction = `Clicked: ${identifier} "${text.trim()}"`;
+        this.addToActionHistory(this.lastUserAction);
+      }, true);
+
+      // Track form submissions
+      document.addEventListener('submit', (e) => {
+        const form = e.target;
+        const identifier = form.id || form.className || 'form';
+        this.lastUserAction = `Submitted form: ${identifier}`;
+        this.addToActionHistory(this.lastUserAction);
+      }, true);
+
+      // Track input changes
+      document.addEventListener('change', (e) => {
+        const target = e.target;
+        if (target.tagName === 'INPUT' || target.tagName === 'SELECT') {
+          const identifier = target.id || target.name || target.type;
+          this.lastUserAction = `Changed input: ${identifier}`;
+          this.addToActionHistory(this.lastUserAction);
+        }
+      }, true);
+
+      // Track page navigation
+      window.addEventListener('popstate', () => {
+        this.lastUserAction = `Navigated to: ${window.location.pathname}`;
+        this.addToActionHistory(this.lastUserAction);
+      });
+    }
+
+    addToActionHistory(action) {
+      this.userActionHistory.unshift({
+        action,
+        timestamp: Date.now()
+      });
+      if (this.userActionHistory.length > this.maxActionHistory) {
+        this.userActionHistory.pop();
+      }
     }
 
     async checkChromeAI() {
@@ -84,8 +140,21 @@
           // Call original first
           originalConsole[method](...args);
 
-          // Then capture and analyze
-          const metadata = this.captureMetadata(method, args);
+          try {
+            // Then capture and analyze
+            const metadata = this.captureMetadata(method, args);
+
+          // Add to recent logs for context
+          if (method !== 'error' && method !== 'warn') {
+            this.recentLogs.push({
+              level: method,
+              message: metadata.message,
+              time: Date.now()
+            });
+            if (this.recentLogs.length > this.maxRecentLogs) {
+              this.recentLogs.shift();
+            }
+          }
 
           if (this.aiAvailable && (method === 'error' || method === 'warn')) {
             metadata.analysis = await this.analyzeWithAI(metadata);
@@ -98,15 +167,31 @@
           }
 
           this.storeLog(metadata);
+          } catch (error) {
+            // If there's an error in our logging, don't break the console
+            originalConsole.debug('[Mosqit] Error capturing log:', error);
+          }
         };
       });
     }
 
     captureMetadata(level, args) {
       const message = args.map(arg => {
-        if (typeof arg === 'object') {
+        if (arg instanceof Error) {
+          // Handle Error objects specially
+          return arg.message || arg.toString();
+        } else if (typeof arg === 'object' && arg !== null) {
           try {
-            return JSON.stringify(arg, null, 2);
+            // Try to stringify, but handle circular references
+            return JSON.stringify(arg, (key, value) => {
+              // Handle circular references
+              if (typeof value === 'object' && value !== null) {
+                if (value instanceof Error) {
+                  return value.toString();
+                }
+              }
+              return value;
+            }, 2);
           } catch {
             return String(arg);
           }
@@ -120,22 +205,82 @@
       const callerLine = lines[3] || '';
       const match = callerLine.match(/\(([^:)]+):(\d+):(\d+)\)/);
 
-      return {
+      // Extract function name from stack
+      const functionMatch = callerLine.match(/at\s+(\S+)\s+\(/);
+      const functionName = functionMatch ? functionMatch[1] : 'anonymous';
+
+      // Check if this error is related to recent errors
+      const isRelatedError = this.lastErrorTime && (Date.now() - this.lastErrorTime < 2000);
+
+      const metadata = {
         message,
         level,
         timestamp: Date.now(),
         file: match ? match[1] : 'unknown',
         line: match ? parseInt(match[2]) : 0,
         column: match ? parseInt(match[3]) : 0,
-        url: window.location.href
+        url: window.location.href,
+        functionName,
+        stack: stack.substring(0, 500), // Include partial stack
+        userAction: this.lastUserAction,
+        actionHistory: this.userActionHistory.slice(0, 3), // Last 3 actions
+        recentLogs: this.recentLogs.slice(-5), // Last 5 logs before error
+        relatedToLastError: isRelatedError,
+        previousError: isRelatedError ? this.lastError : null
       };
+
+      // Update last error tracking
+      if (level === 'error' || level === 'warn') {
+        this.lastErrorTime = Date.now();
+        this.lastError = message;
+      }
+
+      return metadata;
     }
 
     async analyzeWithAI(metadata) {
       if (!this.writerSession) return this.analyzeWithPatterns(metadata);
 
       try {
-        const prompt = `Error: ${metadata.message}\nLocation: ${metadata.file}:${metadata.line}\nProvide a brief fix suggestion in 1-2 sentences. No code examples.`;
+        // Build context-rich prompt
+        let contextInfo = '';
+
+        // Add user action context
+        if (metadata.userAction) {
+          contextInfo += `User Action: ${metadata.userAction}\n`;
+        }
+
+        // Add recent action history
+        if (metadata.actionHistory && metadata.actionHistory.length > 0) {
+          contextInfo += `Recent Actions: ${metadata.actionHistory.map(a => a.action).join(' → ')}\n`;
+        }
+
+        // Add recent logs context
+        if (metadata.recentLogs && metadata.recentLogs.length > 0) {
+          const recentMessages = metadata.recentLogs.map(log => `${log.level}: ${log.message.substring(0, 50)}`).join(' | ');
+          contextInfo += `Recent Logs: ${recentMessages}\n`;
+        }
+
+        // Add related error info
+        if (metadata.relatedToLastError && metadata.previousError) {
+          contextInfo += `Previous Error (related): ${metadata.previousError.substring(0, 100)}\n`;
+        }
+
+        const prompt = `JavaScript ${metadata.level} in function "${metadata.functionName}":
+"${metadata.message}"
+
+Context:
+${contextInfo}
+File: ${metadata.file}:${metadata.line}
+URL: ${metadata.url}
+
+Based on the user action "${metadata.userAction || 'unknown'}" and the context above:
+1. What specifically caused this error in this scenario?
+2. What's the exact fix for this user's workflow?
+3. Why did this happen after "${metadata.userAction || 'this action'}"?
+
+Be specific to this exact scenario, not generic. Consider what the user was trying to do.`;
+
         const response = await this.writerSession.write(prompt);
 
         // Clean up the response
@@ -226,15 +371,26 @@
       const originalConsole = console.info.bind(console);
 
       window.addEventListener('error', async (event) => {
+        // Extract function name from stack if available
+        const stack = event.error?.stack || '';
+        const functionMatch = stack.match(/at\s+(\S+)\s+\(/);
+        const functionName = functionMatch ? functionMatch[1] : 'global';
+
         const metadata = {
           message: event.message,
           level: 'error',
           timestamp: Date.now(),
-          file: event.filename,
-          line: event.lineno,
-          column: event.colno,
-          stack: event.error?.stack,
-          url: window.location.href
+          file: event.filename || 'unknown',
+          line: event.lineno || 0,
+          column: event.colno || 0,
+          stack: stack.substring(0, 500),
+          url: window.location.href,
+          functionName,
+          userAction: this.lastUserAction,
+          actionHistory: this.userActionHistory.slice(0, 3),
+          recentLogs: this.recentLogs.slice(-5),
+          relatedToLastError: this.lastErrorTime && (Date.now() - this.lastErrorTime < 2000),
+          previousError: this.lastError
         };
 
         if (this.aiAvailable) {
@@ -250,11 +406,33 @@
 
       window.addEventListener('unhandledrejection', async (event) => {
         const originalConsole = console.info.bind(console);
+
+        // Extract more context from the promise rejection
+        const errorMessage = event.reason?.message || event.reason || 'Unknown promise rejection';
+        const stack = event.reason?.stack || '';
+
+        // Try to extract function name from stack
+        const functionMatch = stack.match(/at\s+(\S+)\s+\(/);
+        const functionName = functionMatch ? functionMatch[1] : 'async function';
+
+        // Extract file and line from stack if available
+        const fileMatch = stack.match(/\(([^:)]+):(\d+):(\d+)\)/);
+
         const metadata = {
-          message: `Unhandled Promise: ${event.reason}`,
+          message: `Unhandled Promise: ${errorMessage}`,
           level: 'error',
           timestamp: Date.now(),
-          url: window.location.href
+          url: window.location.href,
+          functionName,
+          file: fileMatch ? fileMatch[1] : 'async context',
+          line: fileMatch ? parseInt(fileMatch[2]) : 0,
+          column: fileMatch ? parseInt(fileMatch[3]) : 0,
+          stack: stack.substring(0, 500),
+          userAction: this.lastUserAction,
+          actionHistory: this.userActionHistory.slice(0, 3),
+          recentLogs: this.recentLogs.slice(-5),
+          relatedToLastError: this.lastErrorTime && (Date.now() - this.lastErrorTime < 2000),
+          previousError: this.lastError
         };
 
         if (this.aiAvailable) {

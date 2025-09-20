@@ -20,11 +20,35 @@ function testBasicLog() {
 function testWarning() {
     console.warn('Warning: Deprecated API usage');
     log('⚠ Warning sent - AI should analyze this');
+
+    // Show what context Mosqit captured
+    if (window.mosqitLogger) {
+        const lastLog = window.mosqitLogger.logs[window.mosqitLogger.logs.length - 1];
+        if (lastLog) {
+            log('📊 Context captured:');
+            log(`- User Action: ${lastLog.userAction || 'none'}`);
+            log(`- Function: ${lastLog.functionName || 'unknown'}`);
+            log(`- Recent Actions: ${lastLog.actionHistory?.map(a => a.action).join(' → ') || 'none'}`);
+            log(`- Recent Logs: ${lastLog.recentLogs?.length || 0} logs captured`);
+        }
+    }
 }
 
 function testError() {
     console.error('Error: Component render failed');
     log('❌ Error sent - AI should provide fix suggestion');
+
+    // Show what context Mosqit captured
+    if (window.mosqitLogger) {
+        const lastLog = window.mosqitLogger.logs[window.mosqitLogger.logs.length - 1];
+        if (lastLog) {
+            log('📊 Context captured:');
+            log(`- User Action: ${lastLog.userAction || 'none'}`);
+            log(`- Function: ${lastLog.functionName || 'unknown'}`);
+            log(`- Recent Actions: ${lastLog.actionHistory?.map(a => a.action).join(' → ') || 'none'}`);
+            log(`- Recent Logs: ${lastLog.recentLogs?.length || 0} logs captured`);
+        }
+    }
 }
 
 // Test null reference (common React error)
@@ -177,6 +201,64 @@ window.addEventListener('message', (event) => {
         console.log('✅ Mosqit bridge established');
     }
 });
+
+// Show captured context for debugging
+function showCapturedContext() {
+    if (!window.mosqitLogger) {
+        log('❌ Mosqit not initialized');
+        return;
+    }
+
+    const logs = window.mosqitLogger.logs;
+    const recentErrors = logs.filter(l => l.level === 'error' || l.level === 'warn').slice(-3);
+
+    if (recentErrors.length === 0) {
+        log('No errors captured yet. Trigger some errors first!');
+        return;
+    }
+
+    log('🔍 Rich Context for Recent Errors:\n');
+
+    recentErrors.forEach((error, index) => {
+        log(`━━━ Error ${index + 1} ━━━`);
+        log(`📍 Error: ${error.message.substring(0, 100)}`);
+        log(`📁 Location: ${error.functionName} in ${error.file}:${error.line}`);
+
+        if (error.userAction) {
+            log(`👆 User Action: ${error.userAction}`);
+        }
+
+        if (error.actionHistory && error.actionHistory.length > 0) {
+            log(`📜 Action History:`);
+            error.actionHistory.forEach(action => {
+                const timeAgo = Math.round((Date.now() - action.timestamp) / 1000);
+                log(`   • ${action.action} (${timeAgo}s ago)`);
+            });
+        }
+
+        if (error.recentLogs && error.recentLogs.length > 0) {
+            log(`📝 Recent Console Logs Before Error:`);
+            error.recentLogs.forEach(rLog => {
+                log(`   • [${rLog.level}] ${rLog.message.substring(0, 60)}`);
+            });
+        }
+
+        if (error.relatedToLastError) {
+            log(`🔗 Related to previous error: Yes`);
+            if (error.previousError) {
+                log(`   Previous: ${error.previousError.substring(0, 60)}`);
+            }
+        }
+
+        if (error.analysis) {
+            log(`🤖 AI Analysis: ${error.analysis}`);
+        }
+
+        log('');
+    });
+
+    log('💡 This context is sent to the AI for better analysis!');
+}
 
 // Diagnostic function to check Mosqit status
 async function checkMosqitStatus() {

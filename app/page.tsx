@@ -759,7 +759,7 @@ Cannot read property 'name' of null
                   padding: '3px 8px',
                   borderRadius: '4px',
                   border: '1px solid #414868'
-                }}>F12</code> or right-click → "Inspect"</li>
+                }}>F12</code> or right-click → &ldquo;Inspect&rdquo;</li>
                 <li><strong style={{ color: '#9ece6a' }}>Find Mosqit Tab:</strong> Look for the 🦟 Mosqit panel in DevTools tabs</li>
                 <li><strong style={{ color: '#9ece6a' }}>Start Debugging:</strong> All console outputs automatically appear with AI analysis</li>
               </ol>

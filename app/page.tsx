@@ -651,7 +651,7 @@ export default function Home() {
               </div>
               <div className="feature-card">
                 <h3><span className="feature-icon">💡</span> Actionable Fixes</h3>
-                <p>Get specific fix suggestions, code examples, and next debugging steps. Not just what&apos;s wrong, but how to fix it.</p>
+                <p>Get specific fix suggestions with proper stack trace location tracking. Shows exact file:line:column for every error with DOM context.</p>
               </div>
               <div className="feature-card">
                 <h3><span className="feature-icon">🚀</span> Multi-API Strategy</h3>

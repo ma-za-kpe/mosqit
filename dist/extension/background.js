@@ -1,15 +1,21 @@
 // Mosqit Background Service Worker
 console.log('[Mosqit] Background service worker loaded at', new Date().toISOString());
 
+// Import storage service
+importScripts('storage.js');
+
+// Initialize storage
+const storage = new MosqitStorage();
+
 // Keep service worker alive
 const keepAlive = () => {
   setTimeout(keepAlive, 20000); // Keep alive every 20 seconds
 };
 keepAlive();
 
-// Storage for logs - persist in chrome.storage
-const logStorage = new Map();
-const maxLogsPerTab = 1000;
+// In-memory cache for quick access
+const logCache = new Map();
+const maxLogsPerTab = 100; // Smaller cache since we have IndexedDB
 
 // DevTools connections
 const devToolsConnections = new Map();
@@ -23,16 +29,40 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     console.log('[Mosqit Background] Processing log from tab:', tabId);
 
     if (tabId) {
-      if (!logStorage.has(tabId)) {
-        logStorage.set(tabId, []);
+      // Update cache
+      if (!logCache.has(tabId)) {
+        logCache.set(tabId, []);
       }
-      const logs = logStorage.get(tabId);
+      const logs = logCache.get(tabId);
       logs.push(message.data);
       if (logs.length > maxLogsPerTab) {
         logs.shift();
       }
 
-      console.log('[Mosqit Background] Stored log. Total logs for tab', tabId, ':', logs.length);
+      // Save to IndexedDB
+      storage.saveLog({
+        ...message.data,
+        tabId,
+        tabUrl: sender.tab?.url || 'unknown'
+      }).then(() => {
+        console.log('[Mosqit Background] Log saved to IndexedDB');
+      }).catch(error => {
+        console.error('[Mosqit Background] Failed to save log:', error);
+      });
+
+      // Update pattern tracking for errors
+      if (message.data.level === 'error' && message.data.file && message.data.line) {
+        const pattern = `${message.data.file}:${message.data.line}`;
+        storage.updatePattern(pattern, {
+          message: message.data.message,
+          level: message.data.level,
+          url: sender.tab?.url
+        }).catch(error => {
+          console.error('[Mosqit Background] Failed to update pattern:', error);
+        });
+      }
+
+      console.log('[Mosqit Background] Processed log. Cache size:', logs.length);
 
       // Send to DevTools if connected
       const devToolsPort = devToolsConnections.get(tabId);
@@ -49,9 +79,61 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       console.warn('[Mosqit Background] No tab ID in sender');
     }
   } else if (message.type === 'GET_LOGS') {
-    const tabId = sender.tab?.id;
-    const logs = logStorage.get(tabId) || [];
-    sendResponse({ logs });
+    const tabId = sender.tab?.id || message.tabId;
+
+    // First return cached logs immediately
+    const cachedLogs = logCache.get(tabId) || [];
+
+    // Then load from IndexedDB
+    storage.getLogs({
+      tabId,
+      limit: 1000,
+      sortBy: 'timestamp',
+      sortOrder: 'desc'
+    }).then(dbLogs => {
+      sendResponse({ logs: [...cachedLogs, ...dbLogs] });
+    }).catch(error => {
+      console.error('[Mosqit Background] Failed to get logs from DB:', error);
+      sendResponse({ logs: cachedLogs });
+    });
+
+    return true; // Keep channel open for async response
+  } else if (message.type === 'CLEAR_LOGS') {
+    const tabId = sender.tab?.id || message.tabId;
+
+    // Clear cache
+    if (tabId) {
+      logCache.delete(tabId);
+    }
+
+    // Clear from database
+    storage.clearLogs().then(() => {
+      console.log('[Mosqit Background] Logs cleared');
+      sendResponse({ success: true });
+    }).catch(error => {
+      console.error('[Mosqit Background] Failed to clear logs:', error);
+      sendResponse({ success: false, error: error.message });
+    });
+
+    return true; // Keep channel open for async response
+  } else if (message.type === 'EXPORT_LOGS') {
+    storage.exportLogs(message.options || {}).then(data => {
+      sendResponse({ success: true, data });
+    }).catch(error => {
+      console.error('[Mosqit Background] Failed to export logs:', error);
+      sendResponse({ success: false, error: error.message });
+    });
+
+    return true; // Keep channel open for async response
+  } else if (message.type === 'IMPORT_LOGS') {
+    storage.importLogs(message.data).then(result => {
+      sendResponse({ success: true, result });
+    }).catch(error => {
+      console.error('[Mosqit Background] Failed to import logs:', error);
+      sendResponse({ success: false, error: error.message });
+    });
+
+    return true; // Keep channel open for async response
   }
   return true;
 });
@@ -78,23 +160,56 @@ chrome.runtime.onConnect.addListener((port) => {
         // Store the connection
         devToolsConnections.set(devToolsTabId, port);
 
-        // Send existing logs
-        const logs = logStorage.get(devToolsTabId) || [];
-        console.log('[Mosqit Background] Sending', logs.length, 'existing logs to DevTools');
-        port.postMessage({ type: 'LOGS_DATA', data: logs });
+        // Send cached logs immediately
+        const cachedLogs = logCache.get(devToolsTabId) || [];
+        console.log('[Mosqit Background] Sending', cachedLogs.length, 'cached logs to DevTools');
+        port.postMessage({ type: 'LOGS_DATA', data: cachedLogs });
+
+        // Load and send historical logs from IndexedDB
+        storage.getLogs({
+          tabId: devToolsTabId,
+          limit: 500,
+          sortBy: 'timestamp',
+          sortOrder: 'desc'
+        }).then(dbLogs => {
+          console.log('[Mosqit Background] Sending', dbLogs.length, 'historical logs from IndexedDB');
+          port.postMessage({ type: 'LOGS_DATA', data: dbLogs });
+        }).catch(error => {
+          console.error('[Mosqit Background] Failed to load historical logs:', error);
+        });
 
       } else if (message.type === 'GET_LOGS') {
         // Fallback: Get the tab ID from DevTools
         if (devToolsTabId) {
-          const logs = logStorage.get(devToolsTabId) || [];
-          port.postMessage({ type: 'LOGS_DATA', data: logs });
+          const cachedLogs = logCache.get(devToolsTabId) || [];
+          port.postMessage({ type: 'LOGS_DATA', data: cachedLogs });
+
+          // Also load from IndexedDB
+          storage.getLogs({
+            tabId: devToolsTabId,
+            limit: 500,
+            sortBy: 'timestamp',
+            sortOrder: 'desc'
+          }).then(dbLogs => {
+            port.postMessage({ type: 'LOGS_DATA', data: dbLogs });
+          });
         } else {
           chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
             if (tabs[0]) {
               const tabId = tabs[0].id;
               devToolsTabId = tabId;
-              const logs = logStorage.get(tabId) || [];
-              port.postMessage({ type: 'LOGS_DATA', data: logs });
+              const cachedLogs = logCache.get(tabId) || [];
+              port.postMessage({ type: 'LOGS_DATA', data: cachedLogs });
+
+              // Load from IndexedDB too
+              storage.getLogs({
+                tabId,
+                limit: 500,
+                sortBy: 'timestamp',
+                sortOrder: 'desc'
+              }).then(dbLogs => {
+                port.postMessage({ type: 'LOGS_DATA', data: dbLogs });
+              });
 
               // Store the connection for this tab
               devToolsConnections.set(tabId, port);
@@ -104,8 +219,17 @@ chrome.runtime.onConnect.addListener((port) => {
         }
       } else if (message.type === 'CLEAR_LOGS') {
         if (devToolsTabId) {
-          logStorage.set(devToolsTabId, []);
-          console.log('[Mosqit Background] Cleared logs for tab:', devToolsTabId);
+          // Clear cache
+          logCache.set(devToolsTabId, []);
+
+          // Clear from database
+          storage.clearLogs().then(() => {
+            console.log('[Mosqit Background] Cleared logs for tab:', devToolsTabId);
+            port.postMessage({ type: 'LOGS_CLEARED', success: true });
+          }).catch(error => {
+            console.error('[Mosqit Background] Failed to clear logs:', error);
+            port.postMessage({ type: 'LOGS_CLEARED', success: false });
+          });
         }
       }
     });
@@ -124,7 +248,7 @@ chrome.runtime.onConnect.addListener((port) => {
 
 // Clear logs when tab is closed
 chrome.tabs.onRemoved.addListener((tabId) => {
-  logStorage.delete(tabId);
+  logCache.delete(tabId);
   devToolsConnections.delete(tabId);
   console.log('[Mosqit Background] Tab closed, cleared data for:', tabId);
 });

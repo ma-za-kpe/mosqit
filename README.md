@@ -105,6 +105,43 @@ if (typeof Writer !== 'undefined') {
 - Angular: Dependency injection errors
 - Next.js: SSR/hydration mismatches
 
+### 5. 💾 **Persistent Storage with IndexedDB**
+
+#### Enterprise-Grade Storage System
+- **10,000 Log Capacity**: Automatic rotation for optimal performance
+- **7-Day Retention**: Configurable cleanup policies
+- **Pattern Tracking**: Historical error pattern analysis
+- **Session Management**: Group logs by debugging sessions
+- **Export/Import**: JSON format for sharing and backup
+
+#### Storage Features
+```javascript
+// Auto-cleanup every hour
+// Compression for large logs
+// Cross-session persistence
+const storage = new MosqitStorage({
+  maxLogs: 10000,
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+  cleanupInterval: 60 * 60 * 1000
+});
+```
+
+### 6. 🛠️ **DevTools Panel Integration**
+
+#### Professional Dark Theme Interface
+- **Android Logcat-Inspired Design**: Familiar, efficient layout
+- **Real-Time Updates**: Live log streaming from console
+- **Advanced Filtering**: By level, URL, time range, search
+- **Detailed Metadata**: Stack traces, DOM context, dependencies
+- **AI Analysis Display**: Inline error insights and fixes
+
+#### DevTools Features
+- Responsive dark theme optimized for debugging
+- Color-coded log levels (error, warn, info, debug)
+- Expandable log entries with full metadata
+- Copy-to-clipboard for bug reports
+- Export logs with patterns for team sharing
+
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -181,6 +218,23 @@ npm test
 
 # Lint code
 npm run lint
+```
+
+## 🏗️ Architecture Overview
+
+### Extension Components
+1. **Content Script (MAIN World)**: Console override and context capture
+2. **Content Bridge (ISOLATED World)**: Secure message passing
+3. **Background Service Worker**: Log processing and storage
+4. **DevTools Panel**: Professional debugging interface
+5. **Storage Service**: IndexedDB persistence layer
+6. **AI Service**: Chrome built-in AI integration
+
+### Data Flow
+```
+Console Event → Content Script → Bridge → Background → Storage
+                     ↓                          ↓
+                AI Analysis              DevTools Panel
 ```
 
 ## 🏗️ Architecture (Chrome Best Practices)

@@ -692,18 +692,39 @@ export default function Home() {
               </p>
             </div>
 
-            <div className="code-preview" style={{ marginTop: '30px' }}>
-              <pre>{`// Before Mosqit:
-console.error("Cannot read property 'name' of null");
-> TypeError: Cannot read property 'name' of null
+            <div className="code-preview" style={{
+              marginTop: '30px',
+              background: '#1a1b26',
+              color: '#c0caf5',
+              border: '1px solid #414868',
+              padding: '20px'
+            }}>
+              <pre style={{ color: '#c0caf5', margin: 0 }}>{`// Standard Chrome DevTools Console:
+❌ Uncaught TypeError: Cannot read property 'name' of null
+    at UserProfile.js:42:15
 
-// With Mosqit AI:
-console.error("Cannot read property 'name' of null");
-> TypeError: Cannot read property 'name' of null
-> 🔴 Null reference at UserProfile.js:42
-> 💡 Root cause: Object not initialized before property access
-> ✅ Fix: Add null check: user?.name || 'Default Name'
-> 📚 Best practice: Use optional chaining for nested properties`}</pre>
+// 🦟 Mosqit DevTools Panel:
+┌─────────────────────────────────────────────────────────────
+│ [10:23:45.123] ❌ ERROR  UserProfile.js:42:15
+├─────────────────────────────────────────────────────────────
+│ Message: Cannot read property 'name' of null
+│ Stack: TypeError at UserProfile.render (UserProfile.js:42:15)
+│        at ReactDOM.render (react-dom.js:123:8)
+│
+│ 🤖 AI Analysis:
+│ ━━━━━━━━━━━━━━━
+│ Null reference error in UserProfile component. The variable
+│ 'user' is null when trying to access its 'name' property.
+│
+│ 💡 Suggested Fix:
+│ • Add null check: {user?.name || 'Guest'}
+│ • Initialize user object with defaults
+│ • Validate props before rendering
+│
+│ 📍 DOM Context: <div class="user-profile" id="profile-123">
+│ 📦 Dependencies: react@18.3.1, react-dom@18.3.1
+│ 🔄 Pattern: Detected 3 similar errors in last 5 minutes
+└─────────────────────────────────────────────────────────────`}</pre>
             </div>
           </div>
 
@@ -796,16 +817,30 @@ console.error("Cannot read property 'name' of null");
               </ol>
             </div>
 
-            <div className="code-preview">
-              <pre>{`// Mosqit enhances ALL your debugging:
-console.log("Checking user state");
-// Mosqit: 📝 State check at app.js:42. Consider using debugger or breakpoints.
+            <div className="code-preview" style={{
+              background: '#1a1b26',
+              color: '#c0caf5',
+              border: '1px solid #414868'
+            }}>
+              <pre style={{ color: '#c0caf5' }}>{`// 🦟 Mosqit DevTools Panel - Real-time Display:
 
-console.error("Cannot read property 'name' of null");
-// Mosqit: 🔴 Null reference at app.js:56. Add optional chaining: user?.name
+[22:55:26.865] ❌ ERROR  test-logger.html:42:15
+└─ Cannot read property 'name' of null
+└─ 🤖 AI Analysis: Null reference error at test-logger.html:42.
+   The function testNullReference is attempting to access the
+   'name' property of a null variable. Add null checks or use
+   optional chaining: user?.name
 
-console.warn("API response slow: 3.2s");
-// Mosqit: 🟡 Performance issue. Consider caching or pagination.`}</pre>
+[22:55:27.123] ⚠️ WARN  app.js:156:8
+└─ API response slow: 3.2s
+└─ 🤖 AI Analysis: Performance issue detected. Response time
+   exceeds 3 seconds. Consider implementing caching, pagination,
+   or optimizing the backend query.
+
+[22:55:27.456] ℹ️ INFO  UserProfile.js:89:12
+└─ User state updated successfully
+└─ DOM Context: <button id="save-btn" class="primary">
+└─ Dependencies: ["react@18.3.1", "redux@4.2.0"]`}</pre>
             </div>
           </div>
 

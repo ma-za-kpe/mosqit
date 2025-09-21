@@ -382,6 +382,37 @@ class MosqitDevToolsPanel {
       this.renderLogs();
     });
 
+    // Theme toggle
+    if (this.elements.themeToggle) {
+      this.elements.themeToggle.addEventListener('click', () => {
+        const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', newTheme);
+
+        // Update panel class
+        const panel = document.querySelector('.mosqit-panel');
+        if (panel) {
+          panel.classList.toggle('dark-theme', newTheme === 'dark');
+          panel.classList.toggle('light-theme', newTheme === 'light');
+        }
+
+        // Save preference
+        chrome.storage.local.set({ theme: newTheme });
+      });
+
+      // Load saved theme on startup
+      chrome.storage.local.get(['theme'], (result) => {
+        const theme = result.theme || 'dark';
+        document.documentElement.setAttribute('data-theme', theme);
+
+        const panel = document.querySelector('.mosqit-panel');
+        if (panel) {
+          panel.classList.toggle('dark-theme', theme === 'dark');
+          panel.classList.toggle('light-theme', theme === 'light');
+        }
+      });
+    }
+
     // Close details button
     if (this.elements.closeDetails) {
       this.elements.closeDetails.addEventListener('click', () => {
@@ -504,6 +535,12 @@ class MosqitDevToolsPanel {
   }
 
   appendLogToUI(log, index = this.filteredLogs.length - 1) {
+    // Clear empty state if it exists
+    const emptyState = this.elements.logsList.querySelector('.empty-state');
+    if (emptyState) {
+      emptyState.remove();
+    }
+
     const data = log.data || log;
     const timestamp = new Date(data.timestamp).toLocaleTimeString('en-US', {
       hour12: false,
@@ -788,6 +825,7 @@ style.textContent = `
     --accent-success: #9ece6a;
     --accent-warning: #e0af68;
     --accent-danger: #f7768e;
+    --accent-info: #7dcfff;
 
     /* Spacing */
     --spacing-xs: 4px;
@@ -795,6 +833,33 @@ style.textContent = `
     --spacing-md: 12px;
     --spacing-lg: 16px;
     --spacing-xl: 24px;
+  }
+
+  /* Light Theme */
+  [data-theme="light"] {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f5f5f5;
+    --bg-tertiary: #eeeeee;
+    --bg-hover: #e8e8e8;
+    --border-color: #d4d4d4;
+    --text-primary: #1a1a1a;
+    --text-secondary: #4a4a4a;
+    --text-muted: #9e9e9e;
+
+    /* Log Level Colors (adjusted for light background) */
+    --level-verbose: #757575;
+    --level-debug: #9333ea;
+    --level-info: #2563eb;
+    --level-warn: #d97706;
+    --level-error: #dc2626;
+    --level-assert: #b91c1c;
+
+    /* Accent Colors (adjusted for light background) */
+    --accent-primary: #2563eb;
+    --accent-success: #16a34a;
+    --accent-warning: #d97706;
+    --accent-danger: #dc2626;
+    --accent-info: #0891b2;
   }
 
   * {

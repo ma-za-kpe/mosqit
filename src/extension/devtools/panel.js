@@ -715,6 +715,64 @@ class MosqitDevToolsPanel {
       `;
     }
 
+    // DOM Snapshot for visual debugging
+    if (data.domSnapshot) {
+      const snapshot = data.domSnapshot;
+      detailsHTML += `
+        <div class="detail-section">
+          <strong>🖼️ DOM Preview</strong>
+          <div class="dom-preview" style="background: #1a1b26; border: 1px solid #414868; border-radius: 6px; padding: 12px; margin-top: 8px;">
+
+            ${snapshot.elementPath ? `
+              <div style="color: #7aa2f7; font-family: monospace; font-size: 12px; margin-bottom: 8px;">
+                <strong>Element Path:</strong> ${this.escapeHtml(snapshot.elementPath)}
+              </div>
+            ` : ''}
+
+            ${snapshot.boundingBox ? `
+              <div style="color: #bb9af7; font-family: monospace; font-size: 12px; margin-bottom: 8px;">
+                <strong>Position:</strong>
+                ${Math.round(snapshot.boundingBox.x)}×${Math.round(snapshot.boundingBox.y)}
+                • <strong>Size:</strong>
+                ${Math.round(snapshot.boundingBox.width)}×${Math.round(snapshot.boundingBox.height)}
+              </div>
+            ` : ''}
+
+            ${snapshot.html ? `
+              <details style="margin-top: 8px;">
+                <summary style="color: #9ece6a; cursor: pointer; user-select: none;">
+                  HTML Preview (click to expand)
+                </summary>
+                <pre style="color: #a9b1d6; font-size: 11px; overflow-x: auto; white-space: pre-wrap; margin-top: 8px; padding: 8px; background: #16161e; border-radius: 4px;">
+${this.escapeHtml(this.formatHTML(snapshot.html))}
+                </pre>
+              </details>
+            ` : ''}
+
+            ${snapshot.computedStyles && Object.keys(snapshot.computedStyles).length > 0 ? `
+              <details style="margin-top: 8px;">
+                <summary style="color: #f7768e; cursor: pointer; user-select: none;">
+                  Computed Styles (click to expand)
+                </summary>
+                <div style="color: #a9b1d6; font-size: 11px; margin-top: 8px; padding: 8px; background: #16161e; border-radius: 4px;">
+                  ${Object.entries(snapshot.computedStyles)
+                    .map(([key, value]) => `<div><strong style="color: #7aa2f7;">${key}:</strong> ${this.escapeHtml(value)}</div>`)
+                    .join('')}
+                </div>
+              </details>
+            ` : ''}
+
+            ${snapshot.screenshot ? `
+              <div style="margin-top: 8px;">
+                <strong style="color: #73daca;">Screenshot:</strong>
+                <img src="${snapshot.screenshot}" alt="Element screenshot" style="max-width: 100%; border: 1px solid #414868; border-radius: 4px; margin-top: 4px;">
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    }
+
     // Dependencies
     if (data.dependencies && data.dependencies.length > 0) {
       detailsHTML += `
@@ -796,11 +854,41 @@ class MosqitDevToolsPanel {
     };
     return String(text).replace(/[&<>"']/g, m => map[m]);
   }
+
+  formatHTML(html) {
+    // Pretty format HTML with indentation
+    let formatted = '';
+    let indent = 0;
+    const lines = html.replace(/></g, '>\n<').split('\n');
+
+    lines.forEach(line => {
+      const trimmed = line.trim();
+
+      // Decrease indent for closing tags
+      if (trimmed.startsWith('</')) {
+        indent = Math.max(0, indent - 2);
+      }
+
+      // Add indentation
+      if (trimmed) {
+        formatted += ' '.repeat(indent) + trimmed + '\n';
+      }
+
+      // Increase indent for opening tags (not self-closing)
+      if (trimmed.startsWith('<') && !trimmed.startsWith('</') &&
+          !trimmed.endsWith('/>') && !trimmed.includes('</')) {
+        indent += 2;
+      }
+    });
+
+    return formatted.trim();
+  }
 }
 
 // Add enhanced dark theme styles
-const style = document.createElement('style');
-style.textContent = `
+if (typeof document !== 'undefined') {
+  const style = document.createElement('style');
+  style.textContent = `
   /* Base Reset and Variables */
   :root {
     --bg-primary: #1a1b26;
@@ -1531,9 +1619,15 @@ style.textContent = `
     to { transform: translateX(0); }
   }
 `;
-document.head.appendChild(style);
+  document.head.appendChild(style);
 
-// Initialize the panel
-console.log('[Mosqit Panel] Creating MosqitDevToolsPanel instance...');
-const panel = new MosqitDevToolsPanel();
-console.log('[Mosqit Panel] Panel instance created');
+  // Initialize the panel in browser environment
+  console.log('[Mosqit Panel] Creating MosqitDevToolsPanel instance...');
+  const panel = new MosqitDevToolsPanel();
+  console.log('[Mosqit Panel] Panel instance created');
+}
+
+// Export for testing
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = MosqitDevToolsPanel;
+}

@@ -38,9 +38,13 @@
     }
 
     setupUserActionTracking() {
+      // Store last interacted element
+      this.lastInteractedElement = null;
+
       // Track clicks
       document.addEventListener('click', (e) => {
         const target = e.target;
+        this.lastInteractedElement = target;
         const identifier = target.id || target.className || target.tagName;
         const text = target.textContent?.substring(0, 30) || '';
         this.lastUserAction = `Clicked: ${identifier} "${text.trim()}"`;
@@ -352,6 +356,8 @@
         previousError: isRelatedError ? this.lastError : null,
         // DOM Context
         domContext,
+        // DOM Snapshot for visual debugging
+        domSnapshot: this.captureDOMSnapshot(),
         // Dependencies
         dependencies,
         // Additional metadata
@@ -650,6 +656,155 @@ Be specific to this exact scenario, not generic. Consider what the user was tryi
       }
     }
 
+    captureDOMSnapshot() {
+      try {
+        const snapshot = {
+          html: null,
+          elementPath: null,
+          boundingBox: null,
+          computedStyles: null,
+          screenshot: null
+        };
+
+        // Find the error-related element
+        const element = this.findErrorElement();
+
+        if (element) {
+          // Capture element HTML (sanitized)
+          snapshot.html = this.sanitizeHTML(element.outerHTML);
+
+          // Get element path (CSS selector)
+          snapshot.elementPath = this.getElementPath(element);
+
+          // Get bounding box
+          const rect = element.getBoundingClientRect();
+          snapshot.boundingBox = {
+            top: rect.top,
+            left: rect.left,
+            width: rect.width,
+            height: rect.height,
+            visible: rect.width > 0 && rect.height > 0
+          };
+
+          // Get key computed styles
+          const styles = window.getComputedStyle(element);
+          snapshot.computedStyles = {
+            display: styles.display,
+            position: styles.position,
+            visibility: styles.visibility,
+            opacity: styles.opacity,
+            zIndex: styles.zIndex,
+            backgroundColor: styles.backgroundColor,
+            color: styles.color,
+            fontSize: styles.fontSize,
+            overflow: styles.overflow
+          };
+
+          // Highlight element for visual debugging
+          this.highlightElement(element);
+        }
+
+        // Capture viewport screenshot context
+        snapshot.viewport = {
+          width: window.innerWidth,
+          height: window.innerHeight,
+          scrollX: window.scrollX,
+          scrollY: window.scrollY
+        };
+
+        return snapshot;
+      } catch (error) {
+        console.debug('[Mosqit] Error capturing DOM snapshot:', error);
+        return null;
+      }
+    }
+
+    findErrorElement() {
+      // Priority 1: Last interacted element
+      if (this.lastInteractedElement && document.body.contains(this.lastInteractedElement)) {
+        return this.lastInteractedElement;
+      }
+
+      // Priority 2: Active element
+      if (document.activeElement && document.activeElement !== document.body) {
+        return document.activeElement;
+      }
+
+      // Priority 3: Elements with error states
+      const errorSelectors = [
+        '.error', '.has-error', '[data-error]',
+        '.invalid', '.is-invalid', '[aria-invalid="true"]',
+        '.danger', '.alert-danger'
+      ];
+
+      for (const selector of errorSelectors) {
+        const element = document.querySelector(selector);
+        if (element) return element;
+      }
+
+      return null;
+    }
+
+    getElementPath(element) {
+      const path = [];
+      while (element && element.nodeType === Node.ELEMENT_NODE) {
+        let selector = element.tagName.toLowerCase();
+
+        if (element.id) {
+          selector = `#${element.id}`;
+          path.unshift(selector);
+          break;
+        } else if (element.className && typeof element.className === 'string') {
+          selector += `.${element.className.split(' ').filter(c => c).join('.')}`;
+        }
+
+        path.unshift(selector);
+        element = element.parentElement;
+      }
+
+      return path.join(' > ');
+    }
+
+    sanitizeHTML(html) {
+      if (!html) return '';
+
+      // Truncate if too long
+      let sanitized = html.substring(0, 3000);
+
+      // Remove sensitive attributes
+      sanitized = sanitized.replace(/password="[^"]*"/gi, 'password="***"');
+      sanitized = sanitized.replace(/token="[^"]*"/gi, 'token="***"');
+      sanitized = sanitized.replace(/api[_-]?key="[^"]*"/gi, 'api-key="***"');
+      sanitized = sanitized.replace(/secret="[^"]*"/gi, 'secret="***"');
+
+      return sanitized;
+    }
+
+    highlightElement(element) {
+      if (!element) return;
+
+      // Store original styles
+      const originalOutline = element.style.outline;
+      const originalBoxShadow = element.style.boxShadow;
+      const originalTransition = element.style.transition;
+
+      // Apply highlight with animation
+      element.style.transition = 'all 0.3s ease';
+      element.style.outline = '3px solid #ff4444';
+      element.style.boxShadow = '0 0 20px rgba(255, 68, 68, 0.5)';
+
+      // Remove highlight after 3 seconds
+      setTimeout(() => {
+        if (element && document.body.contains(element)) {
+          element.style.outline = originalOutline || '';
+          element.style.boxShadow = originalBoxShadow || '';
+          setTimeout(() => {
+            element.style.transition = originalTransition || '';
+          }, 300);
+        }
+      }, 3000);
+    }
+
     detectDependencies() {
       try {
         const dependencies = {
@@ -939,15 +1094,22 @@ Be specific to this exact scenario, not generic. Consider what the user was tryi
     }
   }
 
-  // Initialize Mosqit
-  window.mosqitLogger = new MosqitLogger();
+  // Initialize Mosqit only in browser environment
+  if (typeof window !== 'undefined') {
+    window.mosqitLogger = new MosqitLogger();
 
-  // Expose to page for testing
-  window.mosqit = {
-    getLogs: () => window.mosqitLogger.getLogs(),
-    getErrorPatterns: () => window.mosqitLogger.getErrorPatterns(),
-    clearLogs: () => window.mosqitLogger.clearLogs(),
-    aiAvailable: () => window.mosqitLogger.aiAvailable
-  };
+    // Expose to page for testing
+    window.mosqit = {
+      getLogs: () => window.mosqitLogger.getLogs(),
+      getErrorPatterns: () => window.mosqitLogger.getErrorPatterns(),
+      clearLogs: () => window.mosqitLogger.clearLogs(),
+      aiAvailable: () => window.mosqitLogger.aiAvailable
+    };
+  }
+
+  // Export for testing
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = MosqitLogger;
+  }
 
 })();

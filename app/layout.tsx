@@ -272,6 +272,23 @@ export default function RootLayout({
             gtag('config', 'G-XXXXXXXXXX');
           `}
         </Script>
+        {/* Critical CSS to prevent FOUC */}
+        <style dangerouslySetInnerHTML={{ __html: `
+          body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+          }
+          .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+          }
+          .card {
+            background: rgba(255, 255, 255, 0.95);
+            color: #2d3748;
+          }
+        `}} />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}

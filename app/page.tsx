@@ -700,31 +700,43 @@ export default function Home() {
               padding: '20px'
             }}>
               <pre style={{ color: '#c0caf5', margin: 0 }}>{`// Standard Chrome DevTools Console:
-❌ Uncaught TypeError: Cannot read property 'name' of null
+Uncaught TypeError: Cannot read property 'name' of null
     at UserProfile.js:42:15
+    at processComponent (react-dom.js:123:8)
+    at beginWork (react-dom.js:456:12)
 
-// 🦟 Mosqit DevTools Panel:
-┌─────────────────────────────────────────────────────────────
-│ [10:23:45.123] ❌ ERROR  UserProfile.js:42:15
-├─────────────────────────────────────────────────────────────
-│ Message: Cannot read property 'name' of null
-│ Stack: TypeError at UserProfile.render (UserProfile.js:42:15)
-│        at ReactDOM.render (react-dom.js:123:8)
-│
-│ 🤖 AI Analysis:
-│ ━━━━━━━━━━━━━━━
-│ Null reference error in UserProfile component. The variable
-│ 'user' is null when trying to access its 'name' property.
-│
-│ 💡 Suggested Fix:
-│ • Add null check: {user?.name || 'Guest'}
-│ • Initialize user object with defaults
-│ • Validate props before rendering
-│
-│ 📍 DOM Context: <div class="user-profile" id="profile-123">
-│ 📦 Dependencies: react@18.3.1, react-dom@18.3.1
-│ 🔄 Pattern: Detected 3 similar errors in last 5 minutes
-└─────────────────────────────────────────────────────────────`}</pre>
+// 🦟 Mosqit DevTools Panel (click log to expand):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[11:03:02 PM] ❌ ERROR  UserProfile.js:42:15
+Cannot read property 'name' of null
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+▼ Log Details (expanded view)
+
+  Message:
+  Cannot read property 'name' of null
+
+  🤖 AI Analysis:
+  The error "Cannot read property 'name' of null" occurs
+  in the UserProfile component. The variable 'user' is null
+  when trying to access its 'name' property. This likely
+  means the user data hasn't loaded yet or wasn't passed
+  correctly to the component.
+
+  Location: UserProfile.js:42:15
+
+  Stack Trace:
+  TypeError: Cannot read property 'name' of null
+    at UserProfile.render (UserProfile.js:42:15)
+    at processComponent (react-dom.js:123:8)
+    at beginWork (react-dom.js:456:12)
+    at performUnitOfWork (react-dom.js:789:10)
+
+  Metadata:
+  • URL: http://localhost:3000/profile
+  • Timestamp: 9/21/2025, 11:03:02 PM
+  • Level: error
+  • User Agent: Mozilla/5.0 (Windows NT 10.0)`}</pre>
             </div>
           </div>
 
@@ -822,25 +834,49 @@ export default function Home() {
               color: '#c0caf5',
               border: '1px solid #414868'
             }}>
-              <pre style={{ color: '#c0caf5' }}>{`// 🦟 Mosqit DevTools Panel - Real-time Display:
+              <pre style={{ color: '#c0caf5' }}>{`// 🦟 Mosqit DevTools Panel - Actual Display:
 
-[22:55:26.865] ❌ ERROR  test-logger.html:42:15
-└─ Cannot read property 'name' of null
-└─ 🤖 AI Analysis: Null reference error at test-logger.html:42.
-   The function testNullReference is attempting to access the
-   'name' property of a null variable. Add null checks or use
-   optional chaining: user?.name
+[11:03:02 PM] ❌ ERROR  content.js:215:35
+Cannot read properties of null (reading 'addEventListener')
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-[22:55:27.123] ⚠️ WARN  app.js:156:8
-└─ API response slow: 3.2s
-└─ 🤖 AI Analysis: Performance issue detected. Response time
-   exceeds 3 seconds. Consider implementing caching, pagination,
-   or optimizing the backend query.
+Click to expand and see:
+▼ Log Details
 
-[22:55:27.456] ℹ️ INFO  UserProfile.js:89:12
-└─ User state updated successfully
-└─ DOM Context: <button id="save-btn" class="primary">
-└─ Dependencies: ["react@18.3.1", "redux@4.2.0"]`}</pre>
+  Message:
+  DOM manipulation error: Cannot read properties of null
+  (reading 'addEventListener')
+
+  🤖 AI Analysis:
+  The error "Cannot read properties of null (reading
+  'addEventListener')" occurs because the JavaScript code
+  attempted to add an event listener to a DOM element that
+  was null. This likely happened because the element targeted
+  by the event listener was not found in the DOM at the time
+  the code executed.
+
+  Location: content.js:215:35
+
+  Stack Trace:
+  Error
+    at MosqitLogger.captureMetadata (content.js:273:21)
+    at console.<computed> [as error] (content.js:215:35)
+    at testDOMError (test-logger.js:88:17)
+    at HTMLButtonElement.onclick (test-logger.html:56:56)
+
+  Metadata:
+  • URL: http://localhost:3000/test/test-logger.html
+  • Timestamp: 9/21/2025, 11:03:02 PM
+  • Level: error
+  • User Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)
+
+[11:03:05 PM] ⚠️ WARN  app.js:156:8
+API response slow: 3.2s
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[11:03:07 PM] ✅ INFO  content.js:215
+[Mosqit] ✅ Logger initialized
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`}</pre>
             </div>
           </div>
 

@@ -707,6 +707,55 @@ console.error("Cannot read property 'name' of null");
             </div>
           </div>
 
+          <div className="card" id="devtools-tutorial">
+            <h2 style={{ color: '#2d3748', marginBottom: '20px' }}>🛠️ How to Use Mosqit DevTools Panel</h2>
+
+            <div style={{
+              background: 'linear-gradient(135deg, #1a1b26 0%, #24283b 100%)',
+              padding: '25px',
+              borderRadius: '12px',
+              color: '#c0caf5',
+              marginBottom: '30px'
+            }}>
+              <h3 style={{ color: '#7aa2f7', marginBottom: '20px' }}>🦟 Quick Start Guide</h3>
+
+              <ol style={{ lineHeight: '2', fontSize: '1.1rem' }}>
+                <li><strong style={{ color: '#9ece6a' }}>Install the Extension:</strong> Load Mosqit from Chrome Extensions</li>
+                <li><strong style={{ color: '#9ece6a' }}>Open DevTools:</strong> Press <code style={{
+                  background: '#292e42',
+                  padding: '3px 8px',
+                  borderRadius: '4px',
+                  border: '1px solid #414868'
+                }}>F12</code> or right-click → "Inspect"</li>
+                <li><strong style={{ color: '#9ece6a' }}>Find Mosqit Tab:</strong> Look for the 🦟 Mosqit panel in DevTools tabs</li>
+                <li><strong style={{ color: '#9ece6a' }}>Start Debugging:</strong> All console outputs automatically appear with AI analysis</li>
+              </ol>
+
+              <div style={{ marginTop: '25px', padding: '20px', background: '#292e42', borderRadius: '8px' }}>
+                <h4 style={{ color: '#e0af68', marginBottom: '15px' }}>✨ Panel Features</h4>
+                <ul style={{ listStyle: 'none', padding: 0 }}>
+                  <li style={{ marginBottom: '10px' }}>🌙 <strong>Dark/Light Theme:</strong> Click the theme toggle in the top-right</li>
+                  <li style={{ marginBottom: '10px' }}>🔍 <strong>Filter by Level:</strong> Click chips for Error, Warn, Info, Debug</li>
+                  <li style={{ marginBottom: '10px' }}>🤖 <strong>AI Analysis:</strong> Toggle AI insights on/off with the AI button</li>
+                  <li style={{ marginBottom: '10px' }}>📦 <strong>Export Logs:</strong> Download all logs as JSON for sharing</li>
+                  <li style={{ marginBottom: '10px' }}>🗑️ <strong>Clear Logs:</strong> Start fresh with the clear button</li>
+                  <li style={{ marginBottom: '10px' }}>📊 <strong>Live Updates:</strong> Logs stream in real-time as they occur</li>
+                </ul>
+              </div>
+
+              <div style={{ marginTop: '25px', padding: '20px', background: '#24283b', borderRadius: '8px', border: '1px solid #414868' }}>
+                <h4 style={{ color: '#7dcfff', marginBottom: '15px' }}>💡 Pro Tips</h4>
+                <ul style={{ listStyle: 'none', padding: 0 }}>
+                  <li style={{ marginBottom: '8px' }}>• Click any log to see full details including stack trace</li>
+                  <li style={{ marginBottom: '8px' }}>• Search logs with <code style={{ background: '#1a1b26', padding: '2px 6px', borderRadius: '3px' }}>Ctrl+F</code></li>
+                  <li style={{ marginBottom: '8px' }}>• Press <code style={{ background: '#1a1b26', padding: '2px 6px', borderRadius: '3px' }}>Esc</code> to clear search</li>
+                  <li style={{ marginBottom: '8px' }}>• Use arrow keys to navigate between logs</li>
+                  <li style={{ marginBottom: '8px' }}>• Logs persist across page reloads (IndexedDB storage)</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
           <div className="card" id="installation">
             <h2 style={{ color: '#2d3748', marginBottom: '20px' }}>🛠️ Installation & Setup</h2>
 
@@ -837,12 +886,23 @@ console.warn("API response slow: 3.2s");
               </ul>
             </div>
             <div style={{ background: '#fff5f5', padding: '20px', borderRadius: '10px', marginBottom: '20px' }}>
+              <h3 style={{ color: '#16a34a', marginBottom: '15px' }}>✅ Recently Completed</h3>
+              <ul style={{ color: '#4a5568', lineHeight: '1.8', paddingLeft: '20px' }}>
+                <li>Professional DevTools Panel with Android Logcat-inspired dark UI</li>
+                <li>IndexedDB persistent storage (10,000 logs, 7-day retention)</li>
+                <li>Chrome Writer & Prompt API Integration</li>
+                <li>Export/Import Debug Sessions with JSON format</li>
+                <li>Light/Dark Theme Toggle with saved preferences</li>
+                <li>Real-time log streaming with expandable metadata</li>
+                <li>Pattern tracking and recurring error detection</li>
+              </ul>
+            </div>
+            <div style={{ background: '#fff5f5', padding: '20px', borderRadius: '10px', marginBottom: '20px' }}>
               <h3 style={{ color: '#2d3748', marginBottom: '15px' }}>🚧 In Development</h3>
               <ul style={{ color: '#4a5568', lineHeight: '1.8', paddingLeft: '20px' }}>
                 <li>GitHub Issue Generation with AI</li>
                 <li>Chrome Summarizer API Integration</li>
                 <li>Chrome Rewriter API for Error Simplification</li>
-                <li>Export/Import Debug Sessions</li>
               </ul>
             </div>
             <div style={{ background: '#f0fff4', padding: '20px', borderRadius: '10px' }}>

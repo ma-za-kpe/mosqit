@@ -25,11 +25,11 @@ fs.mkdirSync(extensionDir, { recursive: true });
 const iconsDir = path.join(extensionDir, 'icons');
 fs.mkdirSync(iconsDir, { recursive: true });
 
-// Step 1: Copy content script
+// Step 1: Copy content scripts
 const contentScript = path.join(srcDir, 'content', 'mosqit-content.js');
 if (fs.existsSync(contentScript)) {
   fs.copyFileSync(contentScript, path.join(extensionDir, 'content.js'));
-  console.log('✅ Content script copied');
+  console.log('✅ Main content script copied');
 } else {
   console.warn('⚠️ Content script not found, creating minimal version');
   // Minimal content script as fallback
@@ -40,18 +40,53 @@ console.log('[Mosqit] 🦟 Extension loaded');
   fs.writeFileSync(path.join(extensionDir, 'content.js'), minimalContent);
 }
 
+// Copy bridge content script
+const bridgeScript = path.join(srcDir, 'content', 'content-bridge.js');
+if (fs.existsSync(bridgeScript)) {
+  fs.copyFileSync(bridgeScript, path.join(extensionDir, 'content-bridge.js'));
+  console.log('✅ Bridge content script copied');
+} else {
+  console.warn('⚠️ Bridge script not found, creating it');
+  const bridgeContent = `
+// Content Bridge - Forwards messages from MAIN to background
+window.addEventListener('message', (event) => {
+  if (event.source !== window) return;
+  if (event.data && event.data.type === 'MOSQIT_LOG_FROM_MAIN') {
+    chrome.runtime.sendMessage({
+      type: 'MOSQIT_LOG',
+      data: event.data.data
+    });
+  }
+});
+`;
+  fs.writeFileSync(path.join(extensionDir, 'content-bridge.js'), bridgeContent);
+}
+
 // Step 2: Create background script
 const backgroundJS = `// Mosqit Background Service Worker
-console.log('[Mosqit] Background service worker loaded');
+console.log('[Mosqit] Background service worker loaded at', new Date().toISOString());
 
-// Storage for logs
+// Keep service worker alive
+const keepAlive = () => {
+  setTimeout(keepAlive, 20000); // Keep alive every 20 seconds
+};
+keepAlive();
+
+// Storage for logs - persist in chrome.storage
 const logStorage = new Map();
 const maxLogsPerTab = 1000;
 
+// DevTools connections
+const devToolsConnections = new Map();
+
 // Message handler
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  console.log('[Mosqit Background] Received message:', message.type, 'from tab:', sender.tab?.id);
+
   if (message.type === 'MOSQIT_LOG') {
     const tabId = sender.tab?.id;
+    console.log('[Mosqit Background] Processing log from tab:', tabId);
+
     if (tabId) {
       if (!logStorage.has(tabId)) {
         logStorage.set(tabId, []);
@@ -61,7 +96,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (logs.length > maxLogsPerTab) {
         logs.shift();
       }
+
+      console.log('[Mosqit Background] Stored log. Total logs for tab', tabId, ':', logs.length);
+
+      // Send to DevTools if connected
+      const devToolsPort = devToolsConnections.get(tabId);
+      if (devToolsPort) {
+        console.log('[Mosqit Background] Forwarding to DevTools for tab:', tabId);
+        devToolsPort.postMessage({ type: 'NEW_LOG', data: message.data });
+      } else {
+        console.log('[Mosqit Background] No DevTools connection for tab:', tabId);
+        console.log('[Mosqit Background] Active connections:', Array.from(devToolsConnections.keys()));
+      }
+
       sendResponse({ success: true });
+    } else {
+      console.warn('[Mosqit Background] No tab ID in sender');
     }
   } else if (message.type === 'GET_LOGS') {
     const tabId = sender.tab?.id;
@@ -71,9 +121,77 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return true;
 });
 
+// Handle DevTools connection
+chrome.runtime.onConnect.addListener((port) => {
+  console.log('[Mosqit Background] Port connected:', port.name);
+
+  if (port.name === 'mosqit-devtools') {
+    console.log('[Mosqit] DevTools connected');
+
+    // Get the inspected tab ID from DevTools
+    let devToolsTabId = null;
+
+    // Listen for DevTools messages
+    port.onMessage.addListener((message) => {
+      console.log('[Mosqit Background] DevTools message:', message.type);
+
+      if (message.type === 'INIT') {
+        // DevTools sends the inspected tab ID
+        devToolsTabId = message.tabId;
+        console.log('[Mosqit Background] DevTools initialized for tab:', devToolsTabId);
+
+        // Store the connection
+        devToolsConnections.set(devToolsTabId, port);
+
+        // Send existing logs
+        const logs = logStorage.get(devToolsTabId) || [];
+        console.log('[Mosqit Background] Sending', logs.length, 'existing logs to DevTools');
+        port.postMessage({ type: 'LOGS_DATA', data: logs });
+
+      } else if (message.type === 'GET_LOGS') {
+        // Fallback: Get the tab ID from DevTools
+        if (devToolsTabId) {
+          const logs = logStorage.get(devToolsTabId) || [];
+          port.postMessage({ type: 'LOGS_DATA', data: logs });
+        } else {
+          chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if (tabs[0]) {
+              const tabId = tabs[0].id;
+              devToolsTabId = tabId;
+              const logs = logStorage.get(tabId) || [];
+              port.postMessage({ type: 'LOGS_DATA', data: logs });
+
+              // Store the connection for this tab
+              devToolsConnections.set(tabId, port);
+              console.log('[Mosqit Background] Connected DevTools to tab:', tabId);
+            }
+          });
+        }
+      } else if (message.type === 'CLEAR_LOGS') {
+        if (devToolsTabId) {
+          logStorage.set(devToolsTabId, []);
+          console.log('[Mosqit Background] Cleared logs for tab:', devToolsTabId);
+        }
+      }
+    });
+
+    // Clean up when DevTools disconnects
+    port.onDisconnect.addListener(() => {
+      console.log('[Mosqit] DevTools disconnected');
+      // Remove the connection
+      if (devToolsTabId) {
+        devToolsConnections.delete(devToolsTabId);
+        console.log('[Mosqit Background] Removed DevTools connection for tab:', devToolsTabId);
+      }
+    });
+  }
+});
+
 // Clear logs when tab is closed
 chrome.tabs.onRemoved.addListener((tabId) => {
   logStorage.delete(tabId);
+  devToolsConnections.delete(tabId);
+  console.log('[Mosqit Background] Tab closed, cleared data for:', tabId);
 });
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -108,6 +226,12 @@ const manifest = {
       js: ['content.js'],
       run_at: 'document_start',
       world: 'MAIN'
+    },
+    {
+      matches: ['<all_urls>'],
+      js: ['content-bridge.js'],
+      run_at: 'document_start',
+      world: 'ISOLATED'
     }
   ],
   action: {
@@ -122,7 +246,8 @@ const manifest = {
     '16': 'icons/icon16.png',
     '48': 'icons/icon48.png',
     '128': 'icons/icon128.png'
-  }
+  },
+  devtools_page: 'devtools.html'
 };
 
 fs.writeFileSync(
@@ -273,6 +398,47 @@ iconSizes.forEach(size => {
   fs.writeFileSync(path.join(iconsDir, `icon${size}.png`), iconData);
 });
 console.log('✅ Icons created');
+
+// Step 6: Copy DevTools files
+const devtoolsDir = path.join(srcDir, 'devtools');
+if (fs.existsSync(devtoolsDir)) {
+  // Copy devtools.html
+  const devtoolsHTML = path.join(devtoolsDir, 'devtools.html');
+  if (fs.existsSync(devtoolsHTML)) {
+    fs.copyFileSync(devtoolsHTML, path.join(extensionDir, 'devtools.html'));
+    console.log('✅ DevTools HTML copied');
+  }
+
+  // Copy devtools.js
+  const devtoolsJS = path.join(devtoolsDir, 'devtools.js');
+  if (fs.existsSync(devtoolsJS)) {
+    fs.copyFileSync(devtoolsJS, path.join(extensionDir, 'devtools.js'));
+    console.log('✅ DevTools JS copied');
+  }
+
+  // Copy panel.html
+  const panelHTML = path.join(devtoolsDir, 'panel.html');
+  if (fs.existsSync(panelHTML)) {
+    fs.copyFileSync(panelHTML, path.join(extensionDir, 'panel.html'));
+    console.log('✅ Panel HTML copied');
+  }
+
+  // Copy panel.js
+  const panelJS = path.join(devtoolsDir, 'panel.js');
+  if (fs.existsSync(panelJS)) {
+    fs.copyFileSync(panelJS, path.join(extensionDir, 'panel.js'));
+    console.log('✅ Panel JS copied');
+  }
+
+  // Copy devtools.css if exists
+  const devtoolsCSS = path.join(devtoolsDir, 'devtools.css');
+  if (fs.existsSync(devtoolsCSS)) {
+    fs.copyFileSync(devtoolsCSS, path.join(extensionDir, 'devtools.css'));
+    console.log('✅ DevTools CSS copied');
+  }
+} else {
+  console.warn('⚠️ DevTools directory not found');
+}
 
 console.log('\n🎉 Build complete!');
 console.log(`📁 Extension ready at: ${extensionDir}`);

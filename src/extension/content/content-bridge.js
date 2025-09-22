@@ -9,7 +9,7 @@
   console.log('[Mosqit Bridge] Initializing message bridge...');
 
   // Wake up service worker if needed
-  chrome.runtime.sendMessage({ type: 'WAKE_UP' }, (response) => {
+  chrome.runtime.sendMessage({ type: 'WAKE_UP' }, () => {
     if (chrome.runtime.lastError) {
       console.log('[Mosqit Bridge] Service worker was sleeping, waking up...');
       // Retry after a moment
@@ -32,7 +32,7 @@
       chrome.runtime.sendMessage({
         type: 'MOSQIT_LOG',
         data: event.data.data
-      }, (response) => {
+      }, () => {
         // Optional: send response back to MAIN world if needed
         if (chrome.runtime.lastError) {
           console.warn('[Mosqit Bridge] Error sending to background:', chrome.runtime.lastError);

@@ -206,6 +206,92 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     });
 
     return true; // Keep channel open for async response
+  } else if (message.type === 'CAPTURE_ELEMENT_SCREENSHOT') {
+    // Capture screenshot for element
+    const tabId = sender.tab?.id;
+    if (!tabId) {
+      sendResponse({ error: 'No tab ID' });
+      return true;
+    }
+
+    chrome.tabs.captureVisibleTab(null, { format: 'png' }, (dataUrl) => {
+      if (chrome.runtime.lastError) {
+        console.error('[Mosqit Background] Screenshot failed:', chrome.runtime.lastError);
+        sendResponse({ error: chrome.runtime.lastError.message });
+      } else {
+        // In a real implementation, we would crop to the element area
+        sendResponse({ screenshot: dataUrl });
+      }
+    });
+    return true;
+  } else if (message.type === 'CAPTURE_VISIBLE_TAB') {
+    // Capture full visible tab
+    chrome.tabs.captureVisibleTab(null, { format: 'png' }, (dataUrl) => {
+      if (chrome.runtime.lastError) {
+        console.error('[Mosqit Background] Screenshot failed:', chrome.runtime.lastError);
+        sendResponse({ error: chrome.runtime.lastError.message });
+      } else {
+        sendResponse({ screenshot: dataUrl });
+      }
+    });
+    return true;
+  } else if (message.type === 'VISUAL_BUG_CAPTURED') {
+    // Forward captured bug data to DevTools panel
+    const tabId = sender.tab?.id;
+    if (tabId) {
+      const devToolsPort = devToolsConnections.get(tabId);
+      if (devToolsPort) {
+        console.log('[Mosqit Background] Forwarding bug capture to DevTools');
+        devToolsPort.postMessage({
+          type: 'VISUAL_BUG_CAPTURED',
+          data: message.data
+        });
+        sendResponse({ success: true });
+      } else {
+        console.error('[Mosqit Background] No DevTools connection for tab:', tabId);
+        sendResponse({ success: false, error: 'DevTools not connected' });
+      }
+    }
+    return true;
+  } else if (message.type === 'INJECT_VISUAL_BUG_REPORTER') {
+    const tabId = message.tabId;
+
+    // First check if Visual Bug Reporter is already injected
+    chrome.scripting.executeScript({
+      target: { tabId: tabId },
+      func: () => {
+        return typeof window.mosqitVisualBugReporter !== 'undefined';
+      }
+    }, (results) => {
+      if (chrome.runtime.lastError) {
+        console.error('[Mosqit Background] Failed to check Visual Bug Reporter:', chrome.runtime.lastError);
+        sendResponse({ success: false, error: chrome.runtime.lastError.message });
+        return;
+      }
+
+      const isAlreadyInjected = results && results[0]?.result;
+
+      if (isAlreadyInjected) {
+        console.log('[Mosqit Background] Visual Bug Reporter already injected');
+        sendResponse({ success: true, alreadyInjected: true });
+      } else {
+        // Inject the Visual Bug Reporter script
+        chrome.scripting.executeScript({
+          target: { tabId: tabId },
+          files: ['visual-bug-reporter.js']
+        }, () => {
+          if (chrome.runtime.lastError) {
+            console.error('[Mosqit Background] Failed to inject Visual Bug Reporter:', chrome.runtime.lastError);
+            sendResponse({ success: false, error: chrome.runtime.lastError.message });
+          } else {
+            console.log('[Mosqit Background] Visual Bug Reporter injected successfully');
+            sendResponse({ success: true });
+          }
+        });
+      }
+    });
+
+    return true; // Keep channel open for async response
   }
   return true;
 });
@@ -569,6 +655,20 @@ if (fs.existsSync(devtoolsDir)) {
   }
 } else {
   console.warn('⚠️ DevTools directory not found');
+}
+
+// Copy Visual Bug Reporter files
+const contentDir = path.join(srcDir, 'content');
+const visualBugReporter = path.join(contentDir, 'visual-bug-reporter.js');
+if (fs.existsSync(visualBugReporter)) {
+  fs.copyFileSync(visualBugReporter, path.join(extensionDir, 'visual-bug-reporter.js'));
+  console.log('✅ Visual Bug Reporter copied');
+}
+
+const annotationCanvas = path.join(contentDir, 'annotation-canvas.js');
+if (fs.existsSync(annotationCanvas)) {
+  fs.copyFileSync(annotationCanvas, path.join(extensionDir, 'annotation-canvas.js'));
+  console.log('✅ Annotation Canvas copied');
 }
 
 console.log('\n🎉 Build complete!');

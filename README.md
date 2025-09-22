@@ -1,6 +1,6 @@
-# 🦟 Mosqit - AI-Driven Frontend Debugging Chrome Extension
+# Mosqit - Professional JavaScript Debugging Extension
 
-> **Buzz through frontend bugs—AI-driven GitHub issues from DevTools.**
+> **Advanced Chrome DevTools extension with AI-powered analysis, visual bug reporting, and comprehensive error tracking for modern development teams.**
 
 [![Chrome Built-in AI Challenge 2025](https://img.shields.io/badge/Chrome%20AI%20Challenge-2025-4285F4?style=for-the-badge&logo=google-chrome)](https://devpost.com/software/mosqit)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
@@ -191,7 +191,7 @@ const writer = await Writer.create();
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/mosqit.git
+git clone https://github.com/ma-za-kpe/mosqit.git
 cd mosqit
 
 # Install dependencies
@@ -466,9 +466,9 @@ MIT License - See [LICENSE](LICENSE) for details
 
 ## 📞 Support
 
-- [Report Issues](https://github.com/yourusername/mosqit/issues)
-- [Discussions](https://github.com/yourusername/mosqit/discussions)
-- [Wiki](https://github.com/yourusername/mosqit/wiki)
+- [Report Issues](https://github.com/ma-za-kpe/mosqit/issues)
+- [Discussions](https://github.com/ma-za-kpe/mosqit/discussions)
+- [Wiki](https://github.com/ma-za-kpe/mosqit/wiki)
 
 ---
 

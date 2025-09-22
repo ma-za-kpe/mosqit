@@ -320,7 +320,7 @@ describe('Pattern Detection System', () => {
 
     test('should rank suggestions by relevance', () => {
       // Error context for test scenario
-      "Cannot read property 'name' of null in React component"; // eslint-disable-line
+      // "Cannot read property 'name' of null in React component";
 
       const suggestions = [
         { text: 'Use optional chaining', relevance: 10 },

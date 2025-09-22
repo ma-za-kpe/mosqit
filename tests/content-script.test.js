@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 /**
  * Content Script Integration Tests
  */
@@ -210,7 +211,7 @@ describe('Mosqit Content Script', () => {
         line: 10
       };
 
-      const analysis = await logger.analyzeError(metadata);
+      await logger.analyzeError(metadata);
 
       expect(window.ai.writer.create).toHaveBeenCalled();
     });

@@ -20,7 +20,7 @@ chrome.devtools.panels.create(
 
     // Log when panel is shown
     if (panel.onShown) {
-      panel.onShown.addListener((window) => {
+      panel.onShown.addListener(() => {
         console.log('[Mosqit DevTools] Panel shown for tab:', chrome.devtools.inspectedWindow.tabId);
       });
     }

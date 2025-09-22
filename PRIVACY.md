@@ -58,7 +58,7 @@ Mosqit leverages Chrome's Gemini Nano model which:
 ## Open Source
 
 Mosqit is open source. You can:
-- Review our code: https://github.com/yourusername/mosqit
+- Review our code: https://github.com/ma-za-kpe/mosqit
 - Verify our privacy claims
 - Contribute to development
 - Fork and customize for your needs
@@ -81,8 +81,8 @@ This extension is a developer tool not intended for use by children under 13.
 
 For privacy questions or concerns:
 - Email: privacy@mosqit.dev
-- GitHub Issues: https://github.com/yourusername/mosqit/issues
-- Documentation: https://github.com/yourusername/mosqit
+- GitHub Issues: https://github.com/ma-za-kpe/mosqit/issues
+- Documentation: https://github.com/ma-za-kpe/mosqit
 
 ## Changes to This Policy
 

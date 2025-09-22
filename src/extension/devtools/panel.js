@@ -146,6 +146,13 @@ class MosqitDevToolsPanel {
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
               </svg>
             </button>
+            <button class="action-btn special" id="visual-bug-btn" title="Visual Bug Reporter">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 6v6l4 2"/>
+              </svg>
+              <span class="btn-label">🐛</span>
+            </button>
           </div>
         </div>
 
@@ -169,6 +176,31 @@ class MosqitDevToolsPanel {
             </div>
             <div class="details-content" id="details-content"></div>
           </div>
+
+          <!-- Visual Bug Reporter View (Initially Hidden) -->
+          <div class="visual-bug-panel" id="visual-bug-panel" style="display: none;">
+            <div class="vb-container">
+              <div class="vb-header">
+                <h2>🐛 Visual Bug Reporter</h2>
+                <p>Report visual bugs with screenshots and annotations</p>
+              </div>
+
+              <div class="vb-capture-section" id="vb-capture-section">
+                <button class="vb-capture-btn" id="start-capture">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <circle cx="12" cy="12" r="10"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                  Start Capture Mode
+                </button>
+                <p class="vb-help">Click to activate element selector on the page</p>
+              </div>
+
+              <div class="vb-content" id="vb-content" style="display: none;">
+                <!-- Content will be populated when bug is captured -->
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Status Bar -->
@@ -191,6 +223,9 @@ class MosqitDevToolsPanel {
             <span class="status-item">
               <span class="timestamp"></span>
             </span>
+            <a href="https://buymeacoffee.com/mosqit" target="_blank" rel="noopener noreferrer" class="coffee-support" title="Support Mosqit development">
+              ☕
+            </a>
           </div>
         </div>
       </div>
@@ -222,6 +257,10 @@ class MosqitDevToolsPanel {
     // Initialize theme
     this.isDarkTheme = true;
     this.isPaused = false;
+
+    // Visual Bug Reporter mode
+    this.visualBugMode = false;
+    this.capturedBug = null;
   }
 
   connectToBackground() {
@@ -248,6 +287,15 @@ class MosqitDevToolsPanel {
           console.log('[Mosqit Panel] Received', message.data?.length || 0, 'logs');
           this.logs = message.data || [];
           this.applyFilters();
+        } else if (message.type === 'LOGS_CLEARED') {
+          console.log('[Mosqit Panel] Logs cleared due to navigation');
+          this.logs = [];
+          this.filteredLogs = [];
+          this.renderLogs();
+          this.updateLogCount();
+        } else if (message.type === 'VISUAL_BUG_CAPTURED') {
+          console.log('[Mosqit Panel] Visual bug captured');
+          this.handleCapturedBug(message.data);
         }
       });
 
@@ -372,6 +420,22 @@ class MosqitDevToolsPanel {
     this.elements.exportBtn.addEventListener('click', () => {
       this.exportLogs();
     });
+
+    // Visual Bug Reporter button
+    const visualBugBtn = document.getElementById('visual-bug-btn');
+    if (visualBugBtn) {
+      visualBugBtn.addEventListener('click', () => {
+        this.toggleVisualBugReporter();
+      });
+    }
+
+    // Start capture button
+    const startCaptureBtn = document.getElementById('start-capture');
+    if (startCaptureBtn) {
+      startCaptureBtn.addEventListener('click', () => {
+        this.startVisualCapture();
+      });
+    }
 
     // AI toggle
     this.elements.aiToggle.addEventListener('click', (e) => {
@@ -882,6 +946,546 @@ ${this.escapeHtml(this.formatHTML(snapshot.html))}
     });
 
     return formatted.trim();
+  }
+
+  // Visual Bug Reporter Methods
+  toggleVisualBugReporter() {
+    this.visualBugMode = !this.visualBugMode;
+    const logsPanel = document.getElementById('logs-panel');
+    const visualBugPanel = document.getElementById('visual-bug-panel');
+    const visualBugBtn = document.getElementById('visual-bug-btn');
+
+    if (this.visualBugMode) {
+      // Show Visual Bug Reporter
+      logsPanel.style.display = 'none';
+      visualBugPanel.style.display = 'block';
+      visualBugBtn.classList.add('active');
+
+      // Hide details panel if open
+      this.elements.detailsPanel.style.display = 'none';
+    } else {
+      // Show Logs
+      logsPanel.style.display = 'block';
+      visualBugPanel.style.display = 'none';
+      visualBugBtn.classList.remove('active');
+    }
+  }
+
+  startVisualCapture() {
+    console.log('[Mosqit] Starting visual capture mode...');
+
+    // Check if context is still valid
+    try {
+      // Get the inspected tab ID
+      const tabId = chrome.devtools.inspectedWindow.tabId;
+
+      // First, request background script to inject the Visual Bug Reporter
+      chrome.runtime.sendMessage({
+        type: 'INJECT_VISUAL_BUG_REPORTER',
+        tabId: tabId
+      }, (response) => {
+        if (chrome.runtime.lastError) {
+          const error = chrome.runtime.lastError.message;
+          console.error('[Mosqit] Failed to inject Visual Bug Reporter:', error);
+
+          if (error.includes('context invalidated')) {
+            this.updateCaptureStatus('Extension reloaded. Please close and reopen DevTools.');
+          } else {
+            this.updateCaptureStatus('Error: Failed to inject. Please refresh the page.');
+          }
+          return;
+        }
+
+        if (response?.success) {
+          // Now send the message to start capture
+          chrome.tabs.sendMessage(tabId, {
+            type: 'START_VISUAL_BUG_REPORT'
+          }, (response) => {
+            if (chrome.runtime.lastError) {
+              console.error('[Mosqit] Failed to start capture:', chrome.runtime.lastError);
+              this.updateCaptureStatus('Error: Failed to start capture. Please refresh the page.');
+            } else if (response?.success) {
+              this.updateCaptureStatus('Capture mode active - click an element on the page');
+            } else {
+              this.updateCaptureStatus('Ready to capture - click Start Visual Capture');
+            }
+          });
+        } else {
+          this.updateCaptureStatus('Error: ' + (response?.error || 'Failed to inject bug reporter.'));
+        }
+      });
+    } catch (error) {
+      console.error('[Mosqit] Error in startVisualCapture:', error);
+      this.updateCaptureStatus('Error: Extension context lost. Please reload DevTools.');
+    }
+  }
+
+  updateCaptureStatus(message) {
+    const captureSection = document.getElementById('vb-capture-section');
+    const helpText = captureSection.querySelector('.vb-help');
+    if (helpText) {
+      helpText.textContent = message;
+      helpText.style.color = '#667eea';
+    }
+  }
+
+  handleCapturedBug(bugData) {
+    console.log('[Mosqit] Bug captured:', bugData);
+    this.capturedBug = bugData;
+
+    // Hide capture section, show content
+    document.getElementById('vb-capture-section').style.display = 'none';
+    document.getElementById('vb-content').style.display = 'block';
+
+    // Populate the bug report form
+    this.populateBugReport(bugData);
+  }
+
+  populateBugReport(bugData) {
+    const content = document.getElementById('vb-content');
+
+    content.innerHTML = `
+      <div class="vb-section">
+        <h3>📸 Screenshot</h3>
+        <div class="vb-screenshot">
+          ${bugData.screenshot ?
+            `<img src="${bugData.screenshot}" alt="Captured element">` :
+            '<div class="vb-placeholder">Screenshot will appear here</div>'
+          }
+          <button class="vb-annotate-btn" id="vb-annotate">✏️ Annotate</button>
+        </div>
+      </div>
+
+      <div class="vb-section">
+        <h3>🎯 Element Details</h3>
+        <div class="vb-info-grid">
+          <div class="vb-info-item">
+            <label>Selector:</label>
+            <code>${bugData.element?.selector || 'N/A'}</code>
+          </div>
+          <div class="vb-info-item">
+            <label>Size:</label>
+            <span>${bugData.element?.position?.width || 0} × ${bugData.element?.position?.height || 0}px</span>
+          </div>
+          <div class="vb-info-item">
+            <label>Background:</label>
+            <span style="display: flex; align-items: center; gap: 8px;">
+              ${bugData.element?.styles?.backgroundColor || 'transparent'}
+              <span style="width: 20px; height: 20px; background: ${bugData.element?.styles?.backgroundColor}; border: 1px solid #ccc; border-radius: 4px;"></span>
+            </span>
+          </div>
+          <div class="vb-info-item">
+            <label>Position:</label>
+            <span>${Math.round(bugData.element?.position?.x || 0)}, ${Math.round(bugData.element?.position?.y || 0)}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="vb-section">
+        <h3>✏️ Describe the Issue</h3>
+        <div class="vb-issue-types">
+          <label><input type="checkbox" name="issue" value="color"> Color/Styling</label>
+          <label><input type="checkbox" name="issue" value="alignment"> Alignment/Spacing</label>
+          <label><input type="checkbox" name="issue" value="missing"> Missing element</label>
+          <label><input type="checkbox" name="issue" value="text"> Wrong text</label>
+          <label><input type="checkbox" name="issue" value="broken"> Not working</label>
+        </div>
+        <textarea id="vb-description" placeholder="What's wrong with this element?" rows="3"></textarea>
+        <textarea id="vb-expected" placeholder="What should it look like/do?" rows="2"></textarea>
+      </div>
+
+      <div class="vb-section">
+        <h3>⚠️ Impact</h3>
+        <div class="vb-impact">
+          <label><input type="radio" name="impact" value="critical"> 🔴 Critical</label>
+          <label><input type="radio" name="impact" value="high"> 🟠 High</label>
+          <label><input type="radio" name="impact" value="medium" checked> 🟡 Medium</label>
+          <label><input type="radio" name="impact" value="low"> 🟢 Low</label>
+        </div>
+      </div>
+
+      <div class="vb-actions">
+        <button class="vb-btn secondary" id="vb-cancel">Cancel</button>
+        <button class="vb-btn primary" id="vb-generate">🤖 Generate Issue</button>
+        <button class="vb-btn success" id="vb-submit" disabled>📤 Submit to GitHub</button>
+      </div>
+
+      <div class="vb-preview" id="vb-preview" style="display: none;">
+        <h3>📋 Generated Issue</h3>
+        <div class="vb-issue-content" id="vb-issue-content"></div>
+      </div>
+    `;
+
+    // Add event listeners for the new elements
+    this.setupBugReportHandlers();
+  }
+
+  setupBugReportHandlers() {
+    // Annotate button
+    const annotateBtn = document.getElementById('vb-annotate');
+    if (annotateBtn && this.capturedBug?.screenshot) {
+      annotateBtn.addEventListener('click', () => {
+        this.openAnnotationCanvas(this.capturedBug.screenshot);
+      });
+    }
+
+    // Cancel button
+    const cancelBtn = document.getElementById('vb-cancel');
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', () => {
+        this.cancelBugReport();
+      });
+    }
+
+    // Generate button
+    const generateBtn = document.getElementById('vb-generate');
+    if (generateBtn) {
+      generateBtn.addEventListener('click', () => {
+        this.generateGitHubIssue();
+      });
+    }
+
+    // Submit button
+    const submitBtn = document.getElementById('vb-submit');
+    if (submitBtn) {
+      submitBtn.addEventListener('click', () => {
+        this.submitToGitHub();
+      });
+    }
+  }
+
+  openAnnotationCanvas() {
+    // Send message to content script to open annotation canvas
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs[0]) {
+        chrome.tabs.sendMessage(tabs[0].id, {
+          type: 'OPEN_ANNOTATION_CANVAS',
+          screenshot: this.capturedBug?.screenshot
+        });
+      }
+    });
+  }
+
+  cancelBugReport() {
+    // Reset and go back to capture mode
+    document.getElementById('vb-capture-section').style.display = 'block';
+    document.getElementById('vb-content').style.display = 'none';
+    this.capturedBug = null;
+  }
+
+  async generateGitHubIssue() {
+    const description = document.getElementById('vb-description').value;
+    const expected = document.getElementById('vb-expected').value;
+    const issueTypes = Array.from(document.querySelectorAll('input[name="issue"]:checked'))
+      .map(cb => cb.value);
+    const impact = document.querySelector('input[name="impact"]:checked')?.value || 'medium';
+
+    if (!description) {
+      alert('Please describe the issue');
+      return;
+    }
+
+    // Generate issue using AI or template
+    const issue = await this.createIssueContent({
+      ...this.capturedBug,
+      description,
+      expected,
+      issueTypes,
+      impact
+    });
+
+    // Display preview
+    const preview = document.getElementById('vb-preview');
+    const content = document.getElementById('vb-issue-content');
+    preview.style.display = 'block';
+    content.textContent = issue;
+
+    // Enable submit button
+    document.getElementById('vb-submit').disabled = false;
+  }
+
+  async createIssueContent(bugData) {
+    // Collect console errors and relevant logs
+    const recentErrors = this.collectRecentErrors();
+    const stackTraces = this.extractStackTraces(recentErrors);
+    const consoleLogs = this.getRecentConsoleLogs();
+
+    // Get source context if available
+    const sourceContext = await this.getSourceContext(recentErrors);
+
+    const body = `## 🐛 Bug Description
+${bugData.description}
+
+## 🎯 Expected Behavior
+${bugData.expected || 'N/A'}
+
+## 📸 Visual Evidence
+![Screenshot](${bugData.screenshot || 'screenshot-url'})
+
+## 🔴 Console Errors & Stack Traces
+${this.formatErrors(recentErrors)}
+
+## 📊 Debug Information
+
+### Element Details
+\`\`\`javascript
+{
+  selector: "${bugData.element?.selector || 'N/A'}",
+  dimensions: { width: ${bugData.element?.position?.width}px, height: ${bugData.element?.position?.height}px },
+  position: { x: ${Math.round(bugData.element?.position?.x || 0)}, y: ${Math.round(bugData.element?.position?.y || 0)} },
+  styles: {
+    backgroundColor: "${bugData.element?.styles?.backgroundColor || 'N/A'}",
+    color: "${bugData.element?.styles?.color || 'N/A'}",
+    fontSize: "${bugData.element?.styles?.fontSize || 'N/A'}",
+    fontFamily: "${bugData.element?.styles?.fontFamily || 'N/A'}"
+  },
+  computedRole: "${bugData.element?.role || 'N/A'}",
+  innerHTML: "${this.truncateHTML(bugData.element?.innerHTML) || 'N/A'}"
+}
+\`\`\`
+
+### Source Context
+${sourceContext}
+
+### Recent Console Activity
+\`\`\`log
+${consoleLogs}
+\`\`\`
+
+## 📍 Page Context
+- **URL**: \`${bugData.page?.url || window.location.href}\`
+- **Viewport**: ${bugData.page?.viewport?.width}×${bugData.page?.viewport?.height}
+- **User Agent**: ${bugData.page?.userAgent || navigator.userAgent}
+- **Timestamp**: ${new Date().toISOString()}
+- **Session Duration**: ${this.getSessionDuration()}
+
+## ⚡ Impact Assessment
+**${bugData.impact.toUpperCase()}** - ${this.getImpactDescription(bugData.impact)}
+
+## 🏷️ Issue Classification
+${bugData.issueTypes.map(type => `- [x] ${type}`).join('\n')}
+
+## 📋 Additional Developer Notes
+${stackTraces.length > 0 ? '### Stack Traces\n' + stackTraces : ''}
+
+### Network Activity
+${this.getRecentNetworkErrors()}
+
+### Performance Metrics
+${this.getPerformanceMetrics()}
+
+---
+*Generated by Mosqit Visual Bug Reporter • ${new Date().toLocaleString()}*
+`;
+
+    return body;
+  }
+
+  getImpactDescription(impact) {
+    const descriptions = {
+      critical: 'Blocks critical user functionality',
+      high: 'Major visual issue affecting user experience',
+      medium: 'Noticeable issue that should be fixed',
+      low: 'Minor polish needed'
+    };
+    return descriptions[impact] || 'Visual issue';
+  }
+
+  collectRecentErrors() {
+    // Collect errors from the last 5 minutes
+    const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
+    return this.logs.filter(log =>
+      log.level === 'error' &&
+      new Date(log.timestamp).getTime() > fiveMinutesAgo
+    ).map(log => ({
+      message: log.message,
+      stack: log.stack || '',
+      file: log.file,
+      line: log.line,
+      column: log.column,
+      timestamp: log.timestamp,
+      type: log.type || 'Error'
+    }));
+  }
+
+  extractStackTraces(errors) {
+    const stackTraces = [];
+    errors.forEach(error => {
+      if (error.stack) {
+        const formattedStack = this.formatStackTrace(error.stack, error.file, error.line);
+        if (formattedStack) {
+          stackTraces.push(`### ${error.type}: ${error.message}\n\`\`\`\n${formattedStack}\n\`\`\``);
+        }
+      }
+    });
+    return stackTraces.join('\n\n');
+  }
+
+  formatStackTrace(stack, file, line) {
+    if (!stack) return '';
+
+    // Parse and format the stack trace
+    const lines = stack.split('\n').map(line => {
+      // Extract file path and line number from stack trace lines
+      const match = line.match(/at\s+(.+?)\s+\((.+?):(\d+):(\d+)\)/) ||
+                   line.match(/at\s+(.+?):(\d+):(\d+)/);
+
+      if (match) {
+        const [, method, filepath, lineNum, colNum] = match.length === 5 ? match : ['', '', ...match.slice(1)];
+        return `  at ${method || 'anonymous'} (${filepath}:${lineNum}:${colNum})`;
+      }
+      return line;
+    });
+
+    // Highlight the main error location
+    if (file && line) {
+      lines.unshift(`📍 Main error location: ${file}:${line}`);
+    }
+
+    return lines.join('\n');
+  }
+
+  formatErrors(errors) {
+    if (!errors || errors.length === 0) {
+      return '✅ No console errors detected in the last 5 minutes';
+    }
+
+    return errors.map((error, index) => `
+### Error ${index + 1}
+\`\`\`javascript
+// 📍 Location: ${error.file || 'Unknown'}:${error.line || '?'}:${error.column || '?'}
+// ⏰ Time: ${new Date(error.timestamp).toLocaleTimeString()}
+
+${error.type}: ${error.message}
+
+${error.stack ? 'Stack Trace:\n' + this.formatStackTrace(error.stack, error.file, error.line) : 'No stack trace available'}
+\`\`\`
+`).join('\n');
+  }
+
+  getRecentConsoleLogs() {
+    // Get last 20 console logs for context
+    const recentLogs = this.logs.slice(-20);
+
+    if (recentLogs.length === 0) {
+      return 'No recent console activity';
+    }
+
+    return recentLogs.map(log => {
+      const timestamp = new Date(log.timestamp).toLocaleTimeString();
+      const location = log.file ? ` [${log.file}:${log.line}]` : '';
+      const levelIcon = this.getLevelIcon(log.level);
+      return `[${timestamp}] ${levelIcon} ${log.level.toUpperCase()}${location}: ${log.message}`;
+    }).join('\n');
+  }
+
+  getLevelIcon(level) {
+    const icons = {
+      verbose: '🔍',
+      debug: '🐛',
+      info: 'ℹ️',
+      warn: '⚠️',
+      error: '❌',
+      assert: '🚫'
+    };
+    return icons[level] || '📝';
+  }
+
+  async getSourceContext(errors) {
+    if (!errors || errors.length === 0) {
+      return '// No error source context available';
+    }
+
+    const contexts = [];
+    for (const error of errors.slice(0, 3)) { // Limit to first 3 errors
+      if (error.file && error.line) {
+        contexts.push(`
+### Source: ${error.file}:${error.line}
+\`\`\`javascript
+// Error: ${error.message}
+// Line ${error.line}${error.column ? ', Column ' + error.column : ''}
+// Context would be fetched from source maps if available
+\`\`\``);
+      }
+    }
+
+    return contexts.length > 0 ? contexts.join('\n') : '// No source context available';
+  }
+
+  truncateHTML(html) {
+    if (!html) return '';
+    const maxLength = 200;
+    const cleaned = html.replace(/<[^>]*>/g, '').trim();
+    return cleaned.length > maxLength ?
+      cleaned.substring(0, maxLength) + '...' :
+      cleaned;
+  }
+
+  getSessionDuration() {
+    if (this.logs.length === 0) return 'N/A';
+
+    const firstLog = new Date(this.logs[0].timestamp);
+    const now = new Date();
+    const duration = now - firstLog;
+
+    const minutes = Math.floor(duration / 60000);
+    const seconds = Math.floor((duration % 60000) / 1000);
+
+    return `${minutes}m ${seconds}s`;
+  }
+
+  getRecentNetworkErrors() {
+    // Filter for network-related errors
+    const networkErrors = this.logs.filter(log =>
+      log.level === 'error' &&
+      (log.message.toLowerCase().includes('fetch') ||
+       log.message.toLowerCase().includes('xhr') ||
+       log.message.toLowerCase().includes('network') ||
+       log.message.toLowerCase().includes('cors') ||
+       log.message.match(/\b(4\d{2}|5\d{2})\b/)) // HTTP error codes
+    ).slice(-5);
+
+    if (networkErrors.length === 0) {
+      return '✅ No recent network errors';
+    }
+
+    return '\`\`\`\n' + networkErrors.map(log =>
+      `[${new Date(log.timestamp).toLocaleTimeString()}] ${log.message}`
+    ).join('\n') + '\n\`\`\`';
+  }
+
+  getPerformanceMetrics() {
+    // Get performance timing if available
+    try {
+      const perf = performance.timing;
+      const loadTime = perf.loadEventEnd - perf.navigationStart;
+      const domReadyTime = perf.domContentLoadedEventEnd - perf.navigationStart;
+      const resourcesTime = perf.responseEnd - perf.requestStart;
+
+      return `\`\`\`
+Page Load: ${loadTime}ms
+DOM Ready: ${domReadyTime}ms
+Resources: ${resourcesTime}ms
+Memory Usage: ${this.getMemoryUsage()}
+\`\`\``;
+    } catch {
+      return 'Performance metrics not available';
+    }
+  }
+
+  getMemoryUsage() {
+    if (performance.memory) {
+      const used = Math.round(performance.memory.usedJSHeapSize / 1048576);
+      const total = Math.round(performance.memory.totalJSHeapSize / 1048576);
+      return `${used}MB / ${total}MB`;
+    }
+    return 'N/A';
+  }
+
+  async submitToGitHub() {
+    // This would submit to GitHub via API
+    console.log('[Mosqit] Submitting to GitHub...');
+    alert('GitHub integration coming soon! For now, copy the issue content and create manually.');
   }
 }
 
@@ -1524,6 +2128,31 @@ if (typeof document !== 'undefined') {
     box-shadow: 0 0 4px var(--accent-success);
   }
 
+  .coffee-support {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    background: linear-gradient(135deg, var(--accent-warning), #ff6b6b);
+    border-radius: 50%;
+    text-decoration: none;
+    font-size: 12px;
+    transition: all 0.2s ease;
+    opacity: 0.7;
+    margin-left: var(--spacing-sm);
+  }
+
+  .coffee-support:hover {
+    opacity: 1;
+    transform: scale(1.1);
+    box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
+  }
+
+  .coffee-support:active {
+    transform: scale(0.95);
+  }
+
   /* Responsive Design */
   @media (max-width: 1200px) {
     .details-panel {
@@ -1618,12 +2247,301 @@ if (typeof document !== 'undefined') {
     from { transform: translateX(-100%); }
     to { transform: translateX(0); }
   }
+
+  /* Visual Bug Reporter Styles */
+  .action-btn.special {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border: none;
+  }
+
+  .action-btn.special:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  }
+
+  .action-btn.special.active {
+    background: linear-gradient(135deg, #764ba2, #667eea);
+  }
+
+  .visual-bug-panel {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+  }
+
+  .vb-container {
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  .vb-header {
+    text-align: center;
+    margin-bottom: 30px;
+  }
+
+  .vb-header h2 {
+    color: var(--text-primary);
+    font-size: 1.5rem;
+    margin-bottom: 8px;
+  }
+
+  .vb-header p {
+    color: var(--text-secondary);
+  }
+
+  .vb-capture-section {
+    text-align: center;
+    padding: 40px 20px;
+  }
+
+  .vb-capture-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 32px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+
+  .vb-capture-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+  }
+
+  .vb-help {
+    margin-top: 16px;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+  }
+
+  .vb-section {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+
+  .vb-section h3 {
+    color: var(--text-primary);
+    font-size: 1rem;
+    margin-bottom: 12px;
+  }
+
+  .vb-screenshot {
+    position: relative;
+    background: var(--bg-tertiary);
+    border-radius: 6px;
+    padding: 12px;
+    text-align: center;
+  }
+
+  .vb-screenshot img {
+    max-width: 100%;
+    max-height: 300px;
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+
+  .vb-annotate-btn {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    padding: 8px 16px;
+    background: rgba(255, 255, 255, 0.9);
+    color: #333;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+  }
+
+  .vb-annotate-btn:hover {
+    background: white;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .vb-info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .vb-info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .vb-info-item label {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+
+  .vb-info-item code,
+  .vb-info-item span {
+    color: var(--text-primary);
+    font-family: 'Monaco', monospace;
+    font-size: 0.9rem;
+  }
+
+  .vb-issue-types {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .vb-issue-types label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    background: var(--bg-tertiary);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .vb-issue-types label:hover {
+    background: var(--hover-bg);
+  }
+
+  .vb-issue-types input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+  }
+
+  textarea {
+    width: 100%;
+    padding: 10px;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-family: inherit;
+    resize: vertical;
+    transition: border-color 0.2s;
+  }
+
+  textarea:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  }
+
+  .vb-impact {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .vb-impact label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px;
+    background: var(--bg-tertiary);
+    border: 2px solid transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .vb-impact label:hover {
+    border-color: var(--border-color);
+  }
+
+  .vb-impact input[type="radio"]:checked + label {
+    border-color: #667eea;
+    background: rgba(102, 126, 234, 0.1);
+  }
+
+  .vb-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 20px;
+  }
+
+  .vb-btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .vb-btn.secondary {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+  }
+
+  .vb-btn.secondary:hover {
+    background: var(--hover-bg);
+  }
+
+  .vb-btn.primary {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+  }
+
+  .vb-btn.primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  }
+
+  .vb-btn.success {
+    background: #48bb78;
+    color: white;
+  }
+
+  .vb-btn.success:hover:not(:disabled) {
+    background: #38a169;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(72, 187, 120, 0.3);
+  }
+
+  .vb-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .vb-preview {
+    margin-top: 20px;
+    padding: 16px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+  }
+
+  .vb-issue-content {
+    font-family: 'Monaco', monospace;
+    font-size: 0.85rem;
+    white-space: pre-wrap;
+    color: var(--text-primary);
+    max-height: 400px;
+    overflow-y: auto;
+  }
 `;
   document.head.appendChild(style);
 
   // Initialize the panel in browser environment
   console.log('[Mosqit Panel] Creating MosqitDevToolsPanel instance...');
-  const panel = new MosqitDevToolsPanel();
+  new MosqitDevToolsPanel();
   console.log('[Mosqit Panel] Panel instance created');
 }
 

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 /**
  * Simplified Content Script Tests
  * Focus on core functionality without complex async mocking

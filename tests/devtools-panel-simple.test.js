@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 /**
  * Simplified DevTools Panel Tests
  * Focus on core functionality without complex mocking

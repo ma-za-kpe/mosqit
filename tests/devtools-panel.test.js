@@ -166,7 +166,6 @@ describe('Mosqit DevTools Panel', () => {
       panel = new MosqitDevToolsPanel();
 
       // Mock the elements that addLog expects
-      const mockLogEntry = document.createElement('div');
       panel.elements = {
         logsList: {
           innerHTML: '',

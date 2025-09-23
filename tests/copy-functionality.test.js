@@ -47,24 +47,31 @@ describe('Copy Functionality', () => {
     beforeEach(() => {
       panel.copyIssueContent = function() {
         const issueContentElement = document.getElementById('issue-content-text');
+        console.log('[DEBUG] Element found:', !!issueContentElement);
         if (!issueContentElement) {
           console.warn('[Mosqit] Issue content element not found');
-          return;
+          return false;
         }
 
         const textContent = issueContentElement.dataset.originalMarkdown ||
                           issueContentElement.textContent ||
                           issueContentElement.innerText;
 
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(textContent).then(() => {
+        console.log('[DEBUG] Text content:', textContent);
+        console.log('[DEBUG] Navigator clipboard available:', !!global.navigator.clipboard);
+
+        if (global.navigator.clipboard && global.navigator.clipboard.writeText) {
+          return global.navigator.clipboard.writeText(textContent).then(() => {
             this.showCopyFeedback(true);
+            return true;
           }).catch(err => {
             console.error('[Mosqit] Failed to copy with Clipboard API:', err);
             this.fallbackCopyMethod(textContent);
+            return false;
           });
         } else {
           this.fallbackCopyMethod(textContent);
+          return false;
         }
       };
     });

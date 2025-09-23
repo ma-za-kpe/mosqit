@@ -35,9 +35,15 @@ describe('GitHub Integration', () => {
 
     // Mock panel instance
     panel = {
-      getGitHubSettings: jest.fn().mockResolvedValue({
-        token: 'test-token-123',
-        repo: 'testuser/testrepo'
+      getGitHubSettings: jest.fn().mockImplementation(async () => {
+        return new Promise((resolve) => {
+          mockChrome.storage.sync.get(['mosqitGitHubToken', 'mosqitGitHubRepo'], (result) => {
+            resolve({
+              token: 'test-token-123',
+              repo: 'testuser/testrepo'
+            });
+          });
+        });
       }),
       saveGitHubSettings: jest.fn().mockResolvedValue(undefined),
       clearGitHubSettings: jest.fn().mockResolvedValue(undefined),
@@ -98,7 +104,7 @@ describe('GitHub Integration', () => {
         json: async () => ({ message: 'Bad credentials' })
       });
 
-      panel.createGitHubIssue = async function(settings) {
+      panel.createGitHubIssue = async function(settings, title, body) {
         const response = await fetch(`https://api.github.com/repos/user/repo/issues`, {
           method: 'POST',
           headers: {
@@ -265,7 +271,7 @@ describe('GitHub Integration', () => {
         json: async () => mockResponse
       });
 
-      panel.createGitHubIssue = async function(settings) {
+      panel.createGitHubIssue = async function(settings, title, body) {
         const response = await fetch(`https://api.github.com/repos/${settings.repo}/issues`, {
           method: 'POST',
           headers: {
@@ -304,7 +310,7 @@ describe('GitHub Integration', () => {
         })
       });
 
-      panel.createGitHubIssue = async function(settings) {
+      panel.createGitHubIssue = async function(settings, title, body) {
         const response = await fetch(`https://api.github.com/repos/${settings.repo}/issues`, {
           method: 'POST'
         });
@@ -332,7 +338,7 @@ describe('GitHub Integration', () => {
         })
       });
 
-      panel.createGitHubIssue = async function(settings) {
+      panel.createGitHubIssue = async function(settings, title, body) {
         const response = await fetch(`https://api.github.com/repos/${settings.repo}/issues`, {
           method: 'POST'
         });

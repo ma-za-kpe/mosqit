@@ -449,7 +449,7 @@ No specific AI analysis available. Please ensure console errors are present for 
     test('should handle missing element gracefully', () => {
       document.getElementById = jest.fn().mockReturnValue(null);
 
-      panel.copyIssueContent();
+      const result = panel.copyIssueContent();
 
       expect(result).toBe(false);
     });

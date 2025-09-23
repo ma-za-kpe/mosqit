@@ -25,7 +25,7 @@ export default function Home() {
   // Track initial page load
   useEffect(() => {
     trackEvent('home_page_loaded', 'navigation', window.location.pathname);
-  }, []);
+  }, [trackEvent]);
 
   return (
     <>

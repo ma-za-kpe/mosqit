@@ -98,7 +98,7 @@ describe('GitHub Integration', () => {
         json: async () => ({ message: 'Bad credentials' })
       });
 
-      panel.createGitHubIssue = async function(settings, title, body) {
+      panel.createGitHubIssue = async function(settings) {
         const response = await fetch(`https://api.github.com/repos/user/repo/issues`, {
           method: 'POST',
           headers: {
@@ -265,7 +265,7 @@ describe('GitHub Integration', () => {
         json: async () => mockResponse
       });
 
-      panel.createGitHubIssue = async function(settings, title, body) {
+      panel.createGitHubIssue = async function(settings) {
         const response = await fetch(`https://api.github.com/repos/${settings.repo}/issues`, {
           method: 'POST',
           headers: {
@@ -304,7 +304,7 @@ describe('GitHub Integration', () => {
         })
       });
 
-      panel.createGitHubIssue = async function(settings, title, body) {
+      panel.createGitHubIssue = async function(settings) {
         const response = await fetch(`https://api.github.com/repos/${settings.repo}/issues`, {
           method: 'POST'
         });
@@ -332,7 +332,7 @@ describe('GitHub Integration', () => {
         })
       });
 
-      panel.createGitHubIssue = async function(settings, title, body) {
+      panel.createGitHubIssue = async function(settings) {
         const response = await fetch(`https://api.github.com/repos/${settings.repo}/issues`, {
           method: 'POST'
         });

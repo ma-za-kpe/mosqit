@@ -97,7 +97,7 @@ describe('AI Analysis Features', () => {
         try {
           const session = await window.ai.languageModel.create();
           await session.prompt('test');
-        } catch (error) {
+        } catch {
           return this.generateFallbackTitle(context);
         }
       };

@@ -440,7 +440,7 @@ No specific AI analysis available. Please ensure console errors are present for 
       document.body.appendChild = jest.fn();
       document.body.removeChild = jest.fn();
 
-      const result = panel.copyIssueContent();
+      panel.copyIssueContent();
 
       expect(createElement).toHaveBeenCalledWith('textarea');
       expect(document.execCommand).toHaveBeenCalledWith('copy');
@@ -449,7 +449,7 @@ No specific AI analysis available. Please ensure console errors are present for 
     test('should handle missing element gracefully', () => {
       document.getElementById = jest.fn().mockReturnValue(null);
 
-      const result = panel.copyIssueContent();
+      panel.copyIssueContent();
 
       expect(result).toBe(false);
     });

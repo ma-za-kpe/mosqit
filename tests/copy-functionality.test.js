@@ -104,7 +104,7 @@ describe('Copy Functionality', () => {
 
       await panel.copyIssueContent();
 
-      expect(mockNavigator.clipboard.writeText).toHaveBeenCalled('Raw markdown');
+      expect(mockNavigator.clipboard.writeText).toHaveBeenCalledWith('Raw markdown');
     });
 
     test('should fallback to textContent if no original markdown', async () => {
@@ -119,7 +119,7 @@ describe('Copy Functionality', () => {
 
       await panel.copyIssueContent();
 
-      expect(mockNavigator.clipboard.writeText).toHaveBeenCalled('Text content');
+      expect(mockNavigator.clipboard.writeText).toHaveBeenCalledWith('Text content');
     });
 
     test('should fallback to innerText if no other content', async () => {
@@ -134,7 +134,7 @@ describe('Copy Functionality', () => {
 
       await panel.copyIssueContent();
 
-      expect(mockNavigator.clipboard.writeText).toHaveBeenCalled('Inner text only');
+      expect(mockNavigator.clipboard.writeText).toHaveBeenCalledWith('Inner text only');
     });
 
     test('should handle missing element gracefully', () => {
@@ -466,7 +466,7 @@ describe('Copy Functionality', () => {
 
       await panel.copyIssueContent();
 
-      expect(mockNavigator.clipboard.writeText).toHaveBeenCalled(largeContent);
+      expect(mockNavigator.clipboard.writeText).toHaveBeenCalledWith(largeContent);
     });
   });
 });

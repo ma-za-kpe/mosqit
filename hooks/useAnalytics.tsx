@@ -7,7 +7,6 @@ import {
   trackPageView,
   trackClick,
   trackEvent,
-  trackScrollDepth,
   trackTimeOnPage,
   trackFormInteraction,
   trackExtensionEvent,
@@ -58,7 +57,7 @@ export const useAnalytics = () => {
   }, [pathname]);
 
   // Track button clicks
-  const trackButtonClick = useCallback((buttonName: string, metadata?: Record<string, any>) => {
+  const trackButtonClick = useCallback((buttonName: string, metadata?: Record<string, unknown>) => {
     trackClick(buttonName, 'button', buttonName, metadata);
   }, []);
 
@@ -116,7 +115,7 @@ export const useAnalytics = () => {
   }, []);
 
   // Track user preferences
-  const trackUserPreference = useCallback((preference: string, value: any) => {
+  const trackUserPreference = useCallback((preference: string, value: unknown) => {
     trackPreference(preference, value);
   }, []);
 
@@ -139,13 +138,15 @@ export const withAnalytics = <P extends object>(
   Component: React.ComponentType<P>,
   componentName: string
 ) => {
-  return (props: P) => {
+  const WrappedComponent = (props: P) => {
     useEffect(() => {
       trackEvent('component_view', EventCategories.ENGAGEMENT, componentName);
     }, []);
 
     return <Component {...props} />;
   };
+  WrappedComponent.displayName = `withAnalytics(${componentName})`;
+  return WrappedComponent;
 };
 
 // Custom hook for tracking element visibility

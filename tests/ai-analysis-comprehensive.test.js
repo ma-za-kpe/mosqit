@@ -98,7 +98,7 @@ Provide:
             return analysisResults.join('\n\n');
           }
         }
-      } catch (error) {
+      } catch {
         console.warn('[Mosqit] AI analysis not available, using pattern-based analysis');
       }
 

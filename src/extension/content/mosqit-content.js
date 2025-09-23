@@ -400,12 +400,14 @@
         if (this.aiCapabilities.prompt) {
           if (!this.promptSession) {
             this.promptSession = await window.ai.assistant.create({
-              systemPrompt: 'You are Mosqit, a JavaScript debugging assistant. Provide concise, actionable solutions in 1-2 sentences.'
+              systemPrompt: 'You are a debugging assistant. Give short, specific fixes.'
             });
           }
-          const prompt = `Error: ${metadata.message}\nFile: ${metadata.file}:${metadata.line}\nAction: ${metadata.userAction || 'unknown'}\nProvide a specific fix.`;
+          // Use simpler prompt to avoid quality rejection
+          const errorType = this.getErrorType(metadata.message);
+          const prompt = `${errorType}: ${metadata.message.substring(0, 100)}\nSuggest fix`;
           const response = await this.promptSession.prompt(prompt);
-          return `🤖 ${response.substring(0, 400)}`;
+          return `🤖 ${response.substring(0, 200)}`;
         }
 
         // Fall back to Writer API if available
@@ -446,20 +448,9 @@
           contextInfo += `Previous Error (related): ${metadata.previousError.substring(0, 100)}\n`;
         }
 
-        const prompt = `JavaScript ${metadata.level} in function "${metadata.functionName}":
-"${metadata.message}"
-
-Context:
-${contextInfo}
-File: ${metadata.file}:${metadata.line}
-URL: ${metadata.url}
-
-Based on the user action "${metadata.userAction || 'unknown'}" and the context above:
-1. What specifically caused this error in this scenario?
-2. What's the exact fix for this user's workflow?
-3. Why did this happen after "${metadata.userAction || 'this action'}"?
-
-Be specific to this exact scenario, not generic. Consider what the user was trying to do.`;
+        // Simplify prompt to avoid AI quality rejection
+        const errorCore = metadata.message.substring(0, 150);
+        const prompt = `Fix this error: ${errorCore}\nLocation: ${metadata.file}:${metadata.line}`;
 
         const response = await this.writerSession.write(prompt);
 
@@ -498,6 +489,17 @@ Be specific to this exact scenario, not generic. Consider what the user was tryi
         this.writerSession = null;
         return this.analyzeWithPatterns(metadata);
       }
+    }
+
+    getErrorType(message) {
+      if (message.includes('not defined')) return 'Undefined variable';
+      if (message.includes('null')) return 'Null reference';
+      if (message.includes('undefined')) return 'Undefined reference';
+      if (message.includes('TypeError')) return 'Type error';
+      if (message.includes('SyntaxError')) return 'Syntax error';
+      if (message.includes('fetch')) return 'Network error';
+      if (message.includes('Promise')) return 'Promise rejection';
+      return 'JavaScript error';
     }
 
     analyzeWithPatterns(metadata) {

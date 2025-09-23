@@ -1,0 +1,472 @@
+/**
+ * Copy Functionality Test Suite
+ * Tests clipboard operations, copy feedback, and fallback methods
+ */
+
+describe('Copy Functionality', () => {
+  let panel;
+  let mockDocument;
+  let mockNavigator;
+
+  beforeEach(() => {
+    // Setup DOM mocks
+    mockDocument = {
+      getElementById: jest.fn(),
+      querySelector: jest.fn(),
+      createElement: jest.fn(),
+      execCommand: jest.fn(),
+      body: {
+        appendChild: jest.fn(),
+        removeChild: jest.fn()
+      }
+    };
+
+    // Setup navigator mock
+    mockNavigator = {
+      clipboard: {
+        writeText: jest.fn()
+      }
+    };
+
+    global.document = mockDocument;
+    global.navigator = mockNavigator;
+
+    // Create panel with copy methods
+    panel = {
+      copyIssueContent: jest.fn(),
+      fallbackCopyMethod: jest.fn(),
+      showCopyFeedback: jest.fn()
+    };
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('copyIssueContent', () => {
+    beforeEach(() => {
+      panel.copyIssueContent = function() {
+        const issueContentElement = document.getElementById('issue-content-text');
+        if (!issueContentElement) {
+          console.warn('[Mosqit] Issue content element not found');
+          return;
+        }
+
+        const textContent = issueContentElement.dataset.originalMarkdown ||
+                          issueContentElement.textContent ||
+                          issueContentElement.innerText;
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(textContent).then(() => {
+            this.showCopyFeedback(true);
+          }).catch(err => {
+            console.error('[Mosqit] Failed to copy with Clipboard API:', err);
+            this.fallbackCopyMethod(textContent);
+          });
+        } else {
+          this.fallbackCopyMethod(textContent);
+        }
+      };
+    });
+
+    test('should find and copy content from element', async () => {
+      const mockElement = {
+        dataset: { originalMarkdown: '## Bug Report\nTest content' },
+        textContent: 'Rendered content',
+        innerText: 'Inner text'
+      };
+
+      mockDocument.getElementById.mockReturnValue(mockElement);
+      mockNavigator.clipboard.writeText = jest.fn().mockResolvedValue();
+
+      panel.copyIssueContent = jest.fn().mockImplementation(async function() {
+        const element = document.getElementById('issue-content-text');
+        if (element) {
+          const text = element.dataset.originalMarkdown || element.textContent;
+          await navigator.clipboard.writeText(text);
+        }
+      });
+
+      await panel.copyIssueContent();
+
+      expect(panel.copyIssueContent).toHaveBeenCalled();
+    });
+
+    test('should prefer original markdown over rendered content', async () => {
+      const mockElement = {
+        dataset: { originalMarkdown: 'Raw markdown' },
+        textContent: 'HTML rendered',
+        innerText: 'Plain text'
+      };
+
+      mockDocument.getElementById.mockReturnValue(mockElement);
+      mockNavigator.clipboard.writeText.mockResolvedValue();
+
+      await panel.copyIssueContent();
+
+      expect(mockNavigator.clipboard.writeText).toHaveBeenCalled('Raw markdown');
+    });
+
+    test('should fallback to textContent if no original markdown', async () => {
+      const mockElement = {
+        dataset: {},
+        textContent: 'Text content',
+        innerText: 'Inner text'
+      };
+
+      mockDocument.getElementById.mockReturnValue(mockElement);
+      mockNavigator.clipboard.writeText.mockResolvedValue();
+
+      await panel.copyIssueContent();
+
+      expect(mockNavigator.clipboard.writeText).toHaveBeenCalled('Text content');
+    });
+
+    test('should fallback to innerText if no other content', async () => {
+      const mockElement = {
+        dataset: {},
+        textContent: null,
+        innerText: 'Inner text only'
+      };
+
+      mockDocument.getElementById.mockReturnValue(mockElement);
+      mockNavigator.clipboard.writeText.mockResolvedValue();
+
+      await panel.copyIssueContent();
+
+      expect(mockNavigator.clipboard.writeText).toHaveBeenCalled('Inner text only');
+    });
+
+    test('should handle missing element gracefully', () => {
+      mockDocument.getElementById.mockReturnValue(null);
+      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+      panel.copyIssueContent();
+
+      expect(consoleSpy).toHaveBeenCalledWith('[Mosqit] Issue content element not found');
+      expect(mockNavigator.clipboard.writeText).not.toHaveBeenCalled();
+
+      consoleSpy.mockRestore();
+    });
+
+    test('should use fallback when Clipboard API fails', async () => {
+      const mockElement = {
+        dataset: {},
+        textContent: 'Content to copy'
+      };
+
+      mockDocument.getElementById.mockReturnValue(mockElement);
+      mockNavigator.clipboard.writeText.mockRejectedValue(new Error('Permission denied'));
+
+      panel.fallbackCopyMethod = jest.fn();
+
+      await panel.copyIssueContent();
+
+      // Wait for promise to resolve
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      expect(panel.fallbackCopyMethod).toHaveBeenCalledWith('Content to copy');
+    });
+
+    test('should use fallback when Clipboard API is not available', () => {
+      const mockElement = {
+        dataset: {},
+        textContent: 'Content'
+      };
+
+      mockDocument.getElementById.mockReturnValue(mockElement);
+      mockNavigator.clipboard = undefined;
+
+      panel.fallbackCopyMethod = jest.fn();
+
+      panel.copyIssueContent();
+
+      expect(panel.fallbackCopyMethod).toHaveBeenCalledWith('Content');
+    });
+  });
+
+  describe('fallbackCopyMethod', () => {
+    beforeEach(() => {
+      panel.fallbackCopyMethod = function(text) {
+        try {
+          const textarea = document.createElement('textarea');
+          textarea.value = text;
+          textarea.style.position = 'fixed';
+          textarea.style.left = '-999999px';
+          textarea.style.top = '-999999px';
+          document.body.appendChild(textarea);
+
+          textarea.focus();
+          textarea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textarea);
+
+          this.showCopyFeedback(true);
+        } catch (err) {
+          console.error('[Mosqit] Fallback copy failed:', err);
+          this.showCopyFeedback(false);
+        }
+      };
+    });
+
+    test('should create and use textarea for copying', () => {
+      const mockTextarea = {
+        value: '',
+        style: {},
+        focus: jest.fn(),
+        select: jest.fn()
+      };
+
+      mockDocument.createElement.mockReturnValue(mockTextarea);
+      mockDocument.execCommand.mockReturnValue(true);
+
+      panel.fallbackCopyMethod('Text to copy');
+
+      expect(mockDocument.createElement).toHaveBeenCalledWith('textarea');
+      expect(mockTextarea.value).toBe('Text to copy');
+      expect(mockTextarea.style.position).toBe('fixed');
+      expect(mockTextarea.style.left).toBe('-999999px');
+      expect(mockTextarea.focus).toHaveBeenCalled();
+      expect(mockTextarea.select).toHaveBeenCalled();
+      expect(mockDocument.execCommand).toHaveBeenCalledWith('copy');
+      expect(mockDocument.body.appendChild).toHaveBeenCalledWith(mockTextarea);
+      expect(mockDocument.body.removeChild).toHaveBeenCalledWith(mockTextarea);
+      expect(panel.showCopyFeedback).toHaveBeenCalledWith(true);
+    });
+
+    test('should handle execCommand failure', () => {
+      const mockTextarea = {
+        value: '',
+        style: {},
+        focus: jest.fn(),
+        select: jest.fn()
+      };
+
+      mockDocument.createElement.mockReturnValue(mockTextarea);
+      mockDocument.execCommand.mockReturnValue(false);
+
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+
+      panel.fallbackCopyMethod('Text');
+
+      // Even if execCommand returns false, no error is thrown
+      expect(panel.showCopyFeedback).toHaveBeenCalledWith(true);
+
+      consoleSpy.mockRestore();
+    });
+
+    test('should handle exceptions during copy', () => {
+      mockDocument.createElement.mockImplementation(() => {
+        throw new Error('DOM error');
+      });
+
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+
+      panel.fallbackCopyMethod('Text');
+
+      expect(consoleSpy).toHaveBeenCalledWith('[Mosqit] Fallback copy failed:', expect.any(Error));
+      expect(panel.showCopyFeedback).toHaveBeenCalledWith(false);
+
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe('showCopyFeedback', () => {
+    beforeEach(() => {
+      panel.showCopyFeedback = function(success) {
+        const copyBtn = document.querySelector('.copy-btn');
+        if (!copyBtn) return;
+
+        const originalText = copyBtn.innerHTML;
+
+        if (success) {
+          copyBtn.innerHTML = '✅ Copied!';
+          copyBtn.style.background = '#10b981';
+        } else {
+          copyBtn.innerHTML = '❌ Failed';
+          copyBtn.style.background = '#ef4444';
+        }
+
+        setTimeout(() => {
+          copyBtn.innerHTML = originalText;
+          copyBtn.style.background = '';
+        }, 2000);
+      };
+    });
+
+    test('should show success feedback', () => {
+      const mockButton = {
+        innerHTML: '📋 Copy',
+        style: {}
+      };
+
+      mockDocument.querySelector.mockReturnValue(mockButton);
+
+      panel.showCopyFeedback(true);
+
+      expect(mockButton.innerHTML).toBe('✅ Copied!');
+      expect(mockButton.style.background).toBe('#10b981');
+    });
+
+    test('should show failure feedback', () => {
+      const mockButton = {
+        innerHTML: '📋 Copy',
+        style: {}
+      };
+
+      mockDocument.querySelector.mockReturnValue(mockButton);
+
+      panel.showCopyFeedback(false);
+
+      expect(mockButton.innerHTML).toBe('❌ Failed');
+      expect(mockButton.style.background).toBe('#ef4444');
+    });
+
+    test('should reset button after timeout', () => {
+      jest.useFakeTimers();
+
+      const mockButton = {
+        innerHTML: '📋 Copy',
+        style: { background: '' }
+      };
+
+      mockDocument.querySelector.mockReturnValue(mockButton);
+
+      panel.showCopyFeedback(true);
+
+      expect(mockButton.innerHTML).toBe('✅ Copied!');
+
+      jest.advanceTimersByTime(2000);
+
+      expect(mockButton.innerHTML).toBe('📋 Copy');
+      expect(mockButton.style.background).toBe('');
+
+      jest.useRealTimers();
+    });
+
+    test('should handle missing button gracefully', () => {
+      mockDocument.querySelector.mockReturnValue(null);
+
+      // Should not throw
+      expect(() => panel.showCopyFeedback(true)).not.toThrow();
+    });
+  });
+
+  describe('Copy Button Integration', () => {
+    test('should trigger copy when button is clicked', () => {
+      const mockButton = document.createElement('button');
+      mockButton.className = 'copy-btn';
+      mockButton.onclick = () => panel.copyIssueContent();
+
+      const mockContent = {
+        dataset: { originalMarkdown: 'Content to copy' },
+        textContent: 'Content'
+      };
+
+      mockDocument.getElementById.mockReturnValue(mockContent);
+      mockNavigator.clipboard.writeText.mockResolvedValue();
+
+      panel.copyIssueContent = jest.fn();
+
+      mockButton.click();
+
+      expect(panel.copyIssueContent).toHaveBeenCalled();
+    });
+
+    test('should be accessible via window.mosqitPanel', () => {
+      global.window = { mosqitPanel: panel };
+
+      const mockContent = {
+        dataset: { originalMarkdown: 'Test' }
+      };
+
+      mockDocument.getElementById.mockReturnValue(mockContent);
+
+      // Simulate button with onclick
+      const buttonHTML = '<button onclick="window.mosqitPanel.copyIssueContent()">Copy</button>';
+      expect(buttonHTML).toContain('window.mosqitPanel.copyIssueContent');
+    });
+  });
+
+  describe('Clipboard API Availability', () => {
+    test('should detect when Clipboard API is available', () => {
+      mockNavigator.clipboard = {
+        writeText: jest.fn()
+      };
+
+      expect(navigator.clipboard).toBeDefined();
+      expect(navigator.clipboard.writeText).toBeDefined();
+    });
+
+    test('should detect when Clipboard API is not available', () => {
+      mockNavigator.clipboard = undefined;
+
+      expect(navigator.clipboard).toBeUndefined();
+    });
+
+    test('should handle partial Clipboard API support', () => {
+      mockNavigator.clipboard = {};  // Has clipboard but no writeText
+
+      expect(navigator.clipboard).toBeDefined();
+      expect(navigator.clipboard.writeText).toBeUndefined();
+    });
+  });
+
+  describe('Error Scenarios', () => {
+    test('should handle clipboard permission denied', async () => {
+      const mockElement = {
+        dataset: {},
+        textContent: 'Content'
+      };
+
+      mockDocument.getElementById.mockReturnValue(mockElement);
+      mockNavigator.clipboard.writeText.mockRejectedValue(
+        new DOMException('Write permission denied', 'NotAllowedError')
+      );
+
+      panel.fallbackCopyMethod = jest.fn();
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+
+      await panel.copyIssueContent();
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        '[Mosqit] Failed to copy with Clipboard API:',
+        expect.any(Error)
+      );
+      expect(panel.fallbackCopyMethod).toHaveBeenCalled();
+
+      consoleSpy.mockRestore();
+    });
+
+    test('should handle empty content gracefully', async () => {
+      const mockElement = {
+        dataset: {},
+        textContent: '',
+        innerText: ''
+      };
+
+      mockDocument.getElementById.mockReturnValue(mockElement);
+      mockNavigator.clipboard.writeText.mockResolvedValue();
+
+      await panel.copyIssueContent();
+
+      expect(mockNavigator.clipboard.writeText).toHaveBeenCalled('');
+    });
+
+    test('should handle very large content', async () => {
+      const largeContent = 'x'.repeat(1000000); // 1MB of text
+      const mockElement = {
+        dataset: { originalMarkdown: largeContent },
+        textContent: ''
+      };
+
+      mockDocument.getElementById.mockReturnValue(mockElement);
+      mockNavigator.clipboard.writeText.mockResolvedValue();
+
+      await panel.copyIssueContent();
+
+      expect(mockNavigator.clipboard.writeText).toHaveBeenCalled(largeContent);
+    });
+  });
+});

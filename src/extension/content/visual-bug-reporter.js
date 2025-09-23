@@ -7,12 +7,26 @@ class VisualBugReporter {
   constructor() {
     this.isActive = false;
     this.selectedElement = null;
+    this.hoveredElement = null;
     this.overlay = null;
     this.toolbar = null;
     this.sidePanel = null;
     this.annotations = [];
     this.screenshot = null;
     this.mode = 'select'; // select, annotate, review
+
+    // Enhanced features
+    this.persistentTooltip = false;
+    this.multiSelection = new Set();
+    this.multiSelectionMode = false;
+    this.performanceMonitor = null;
+    this.cssEditor = null;
+    this.contrastAnalyzer = null;
+    this.ariaInspector = null;
+    this.smartContextDetector = null;
+
+    // Load utilities
+    this.loadUtilities();
 
     // Bind methods
     this.handleMouseMove = this.handleMouseMove.bind(this);
@@ -21,24 +35,48 @@ class VisualBugReporter {
   }
 
   /**
+   * Load utility classes
+   */
+  async loadUtilities() {
+    try {
+      // Dynamically load utilities if in browser context
+      if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+        const utils = await import('./visual-bug-reporter-utils.js').catch(() => null);
+        if (utils) {
+          this.contrastAnalyzer = new utils.ContrastAnalyzer();
+          this.ariaInspector = new utils.AriaInspector();
+          this.performanceMonitor = new utils.PerformanceMonitor();
+          this.smartContextDetector = new utils.SmartContextDetector();
+        }
+      }
+    } catch (error) {
+      console.debug('[Mosqit] Utilities not loaded:', error);
+    }
+  }
+
+  /**
    * Initialize the Visual Bug Reporter
    */
   async init() {
     // Visual Bug Reporter initialized
 
-    // Listen for activation from extension
-    this.messageListener = (message, sender, sendResponse) => {
-      if (message.type === 'START_VISUAL_BUG_REPORT') {
-        this.start();
-        sendResponse({ success: true });
-        return true; // Keep message channel open
-      } else if (message.type === 'STOP_VISUAL_BUG_REPORT') {
-        this.stop();
-        sendResponse({ success: true });
-        return true; // Keep message channel open
+    // Listen for activation from extension via window messages (since we're in MAIN world)
+    this.messageListener = (event) => {
+      // Only accept messages from our own window
+      if (event.source !== window) return;
+
+      // Check if it's from our bridge
+      if (event.data && event.data.source === 'mosqit-bridge') {
+        if (event.data.type === 'START_VISUAL_BUG_REPORT') {
+          console.log('[Visual Bug Reporter] Received START command from bridge');
+          this.start();
+        } else if (event.data.type === 'STOP_VISUAL_BUG_REPORT') {
+          console.log('[Visual Bug Reporter] Received STOP command from bridge');
+          this.stop();
+        }
       }
     };
-    chrome.runtime.onMessage.addListener(this.messageListener);
+    window.addEventListener('message', this.messageListener);
   }
 
   /**
@@ -379,12 +417,14 @@ class VisualBugReporter {
    * Handle element click for selection
    */
   async handleClick(event) {
+    console.log('[Visual Bug Reporter] Click handler called, isActive:', this.isActive, 'mode:', this.mode);
     if (!this.isActive || this.mode !== 'select') return;
 
     event.preventDefault();
     event.stopPropagation();
 
     const element = this.getElementAtPoint(event.clientX, event.clientY);
+    console.log('[Visual Bug Reporter] Element at click point:', element);
     if (element) {
       this.selectedElement = element;
       await this.captureElement(element);
@@ -813,46 +853,61 @@ class VisualBugReporter {
    * Capture element and open bug report
    */
   async captureElement(element) {
-    this.showToast('📸 Capturing element...', 'info');
+    console.log('[Visual Bug Reporter] Starting element capture...');
 
-    // Collect element data
+    // Hide all Visual Bug Reporter UI elements before capture
+    this.hideAllUI();
+
+    // Small delay to ensure UI is hidden
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // Collect element data (while UI is hidden)
     const elementData = await this.collectElementData(element);
-    const debugContext = await this.collectDebugContext(element);
+    console.log('[Visual Bug Reporter] Element data collected:', elementData);
 
-    // Take screenshot
+    const debugContext = await this.collectDebugContext(element);
+    console.log('[Visual Bug Reporter] Debug context collected:', debugContext);
+
+    // Take screenshot (while UI is hidden)
     const screenshot = await this.takeScreenshot(element);
 
-    // Send to extension for processing
-    chrome.runtime.sendMessage({
-      type: 'VISUAL_BUG_CAPTURED',
-      data: {
-        element: elementData,
-        screenshot: screenshot,
-        page: {
-          url: window.location.href,
-          title: document.title,
-          viewport: {
-            width: window.innerWidth,
-            height: window.innerHeight
-          },
-          userAgent: navigator.userAgent,
-          referrer: document.referrer,
-          cookieEnabled: navigator.cookieEnabled,
-          language: navigator.language
+    // Show toast after capture
+    this.showAllUI();
+    this.showToast('📸 Captured successfully!', 'success');
+
+    // Send to extension for processing via window message (we're in MAIN world)
+    const captureData = {
+      element: elementData,
+      screenshot: screenshot,
+      page: {
+        url: window.location.href,
+        title: document.title,
+        viewport: {
+          width: window.innerWidth,
+          height: window.innerHeight
         },
-        debug: debugContext
-      }
-    }, (response) => {
-      if (response?.success) {
-        // Stop the visual bug reporter after successful capture
-        this.showToast('✅ Bug captured! Check DevTools panel', 'success');
-        setTimeout(() => {
-          this.stop();
-        }, 2000);
-      } else {
-        this.showToast('❌ Failed to capture bug', 'error');
-      }
-    });
+        userAgent: navigator.userAgent,
+        referrer: document.referrer,
+        cookieEnabled: navigator.cookieEnabled,
+        language: navigator.language
+      },
+      debug: debugContext
+    };
+
+    // Send via window.postMessage to the bridge
+    console.log('[Visual Bug Reporter] Sending bug capture to bridge...');
+    window.postMessage({
+      type: 'VISUAL_BUG_CAPTURED_FROM_MAIN',
+      source: 'mosqit-visual-bug-reporter',
+      data: captureData
+    }, '*');
+    console.log('[Visual Bug Reporter] Bug capture message posted');
+
+    // Show success toast (we can't wait for response in MAIN world)
+    this.showToast('✅ Bug captured! Check DevTools panel', 'success');
+    setTimeout(() => {
+      this.stop();
+    }, 2000);
   }
 
   /**
@@ -969,15 +1024,74 @@ class VisualBugReporter {
   }
 
   /**
+   * Hide all Visual Bug Reporter UI elements
+   */
+  hideAllUI() {
+    // Hide all our UI elements
+    const uiElements = [
+      this.overlay,
+      this.toolbar,
+      this.sidePanel,
+      document.getElementById('mosqit-padding-overlay'),
+      document.getElementById('mosqit-margin-overlay'),
+      ...document.querySelectorAll('.mosqit-toast')
+    ];
+
+    uiElements.forEach(el => {
+      if (el) {
+        el.style.display = 'none';
+      }
+    });
+
+    // Reset cursor
+    document.body.style.cursor = '';
+  }
+
+  /**
+   * Show all Visual Bug Reporter UI elements
+   */
+  showAllUI() {
+    // Show UI elements back
+    if (this.overlay) this.overlay.style.display = 'block';
+    if (this.toolbar) this.toolbar.style.display = 'flex';
+    if (this.sidePanel && this.sidePanel.style.display !== 'none') {
+      this.sidePanel.style.display = 'block';
+    }
+
+    // Restore cursor
+    document.body.style.cursor = 'crosshair';
+  }
+
+  /**
    * Take screenshot of element
    */
   async takeScreenshot(element) {
-    const rect = element.getBoundingClientRect();
+    // Request screenshot through window message to bridge
+    console.log('[Visual Bug Reporter] Requesting screenshot through bridge...');
 
-    // Request screenshot from background script
     return new Promise((resolve) => {
-      chrome.runtime.sendMessage({
-        type: 'CAPTURE_ELEMENT_SCREENSHOT',
+      // Create a unique ID for this request
+      const requestId = 'screenshot_' + Date.now();
+
+      // Set up listener for response
+      const responseHandler = (event) => {
+        if (event.source !== window) return;
+
+        if (event.data && event.data.type === 'SCREENSHOT_RESPONSE' && event.data.requestId === requestId) {
+          window.removeEventListener('message', responseHandler);
+          console.log('[Visual Bug Reporter] Screenshot received');
+          resolve(event.data.screenshot);
+        }
+      };
+
+      window.addEventListener('message', responseHandler);
+
+      // Send request to bridge
+      const rect = element.getBoundingClientRect();
+      window.postMessage({
+        type: 'REQUEST_SCREENSHOT_FROM_MAIN',
+        source: 'mosqit-visual-bug-reporter',
+        requestId: requestId,
         area: {
           x: rect.left + window.scrollX,
           y: rect.top + window.scrollY,
@@ -990,9 +1104,14 @@ class VisualBugReporter {
             height: window.innerHeight
           }
         }
-      }, (response) => {
-        resolve(response?.screenshot || null);
-      });
+      }, '*');
+
+      // Timeout after 3 seconds
+      setTimeout(() => {
+        window.removeEventListener('message', responseHandler);
+        console.log('[Visual Bug Reporter] Screenshot request timed out');
+        resolve(null);
+      }, 3000);
     });
   }
 
@@ -1253,19 +1372,22 @@ class VisualBugReporter {
 }
 
 // Check if we're in a browser environment (not in tests)
-if (typeof window !== 'undefined' && typeof document !== 'undefined' && typeof chrome !== 'undefined' && chrome.runtime) {
+if (typeof window !== 'undefined' && typeof document !== 'undefined') {
   // Check if Visual Bug Reporter is already initialized
   if (typeof window.mosqitVisualBugReporter === 'undefined') {
     // Initialize Visual Bug Reporter
     window.mosqitVisualBugReporter = new VisualBugReporter();
     window.mosqitVisualBugReporter.init();
+    console.log('[Visual Bug Reporter] Initialized in MAIN world');
 
-    // Listen for messages from DevTools panel
-    chrome.runtime.onMessage.addListener((message) => {
-      if (message.type === 'OPEN_ANNOTATION_CANVAS' && message.screenshot) {
+    // Listen for annotation canvas messages via window messages
+    window.addEventListener('message', (event) => {
+      if (event.source !== window) return;
+
+      if (event.data && event.data.type === 'OPEN_ANNOTATION_CANVAS' && event.data.screenshot) {
         // Dynamically import and initialize annotation canvas
         import('./annotation-canvas.js').then((module) => {
-          const canvas = new module.AnnotationCanvas(message.screenshot);
+          const canvas = new module.AnnotationCanvas(event.data.screenshot);
           canvas.init();
         }).catch((error) => {
           console.error('[Mosqit] Failed to load annotation canvas:', error);
@@ -1274,6 +1396,7 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined' && typeof c
     });
   } else {
     // Visual Bug Reporter already initialized
+    console.log('[Visual Bug Reporter] Already initialized');
   }
 }
 

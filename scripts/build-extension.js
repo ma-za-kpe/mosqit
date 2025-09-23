@@ -253,15 +253,35 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       }
     }
     return true;
+  } else if (message.type === 'INJECT_CONTENT_BRIDGE') {
+    const tabId = message.tabId;
+
+    // Inject the content bridge for ISOLATED world communication
+    chrome.scripting.executeScript({
+      target: { tabId: tabId },
+      files: ['content-bridge.js'],
+      world: 'ISOLATED'
+    }, () => {
+      if (chrome.runtime.lastError) {
+        console.error('[Mosqit Background] Failed to inject content bridge:', chrome.runtime.lastError);
+        sendResponse({ success: false, error: chrome.runtime.lastError.message });
+      } else {
+        console.log('[Mosqit Background] Content bridge injected successfully');
+        sendResponse({ success: true });
+      }
+    });
+
+    return true; // Keep channel open for async response
   } else if (message.type === 'INJECT_VISUAL_BUG_REPORTER') {
     const tabId = message.tabId;
 
-    // First check if Visual Bug Reporter is already injected
+    // First check if Visual Bug Reporter is already injected in MAIN world
     chrome.scripting.executeScript({
       target: { tabId: tabId },
       func: () => {
         return typeof window.mosqitVisualBugReporter !== 'undefined';
-      }
+      },
+      world: 'MAIN'
     }, (results) => {
       if (chrome.runtime.lastError) {
         console.error('[Mosqit Background] Failed to check Visual Bug Reporter:', chrome.runtime.lastError);
@@ -275,10 +295,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         console.log('[Mosqit Background] Visual Bug Reporter already injected');
         sendResponse({ success: true, alreadyInjected: true });
       } else {
-        // Inject the Visual Bug Reporter script
+        // Inject the Visual Bug Reporter script into MAIN world
         chrome.scripting.executeScript({
           target: { tabId: tabId },
-          files: ['visual-bug-reporter.js']
+          files: ['visual-bug-reporter.js'],
+          world: 'MAIN'
         }, () => {
           if (chrome.runtime.lastError) {
             console.error('[Mosqit Background] Failed to inject Visual Bug Reporter:', chrome.runtime.lastError);

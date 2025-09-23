@@ -1,6 +1,32 @@
 'use client';
 
+import { useAnalytics, useTrackVisibility, useTrackHover } from '@/hooks/useAnalytics';
+import { useEffect } from 'react';
+
 export default function Home() {
+  const {
+    trackButtonClick,
+    trackLinkClick,
+    trackFeature,
+    trackSocialClick,
+    trackEvent
+  } = useAnalytics();
+
+  // Track visibility of key sections
+  useTrackVisibility('hero-section');
+  useTrackVisibility('features-section');
+  useTrackVisibility('installation-section');
+  useTrackVisibility('chrome-ai-warning');
+
+  // Track hover on important elements
+  useTrackHover('demo-button');
+  useTrackHover('install-button');
+
+  // Track initial page load
+  useEffect(() => {
+    trackEvent('home_page_loaded', 'navigation', window.location.pathname);
+  }, []);
+
   return (
     <>
       <style jsx>{`
@@ -538,8 +564,8 @@ export default function Home() {
           <div className="card">
             <h2 style={{ color: '#2d3748', marginBottom: '20px' }}>🚀 Buzz Through Frontend Bugs with AI-Driven Intelligence</h2>
             <p style={{ color: '#718096', lineHeight: '1.6', marginBottom: '20px' }}>
-              <strong>Mosqit</strong> revolutionizes frontend debugging by combining Android Logcat-inspired logging with Chrome&apos;s built-in AI APIs (Gemini Nano).
-              More than just error analysis - it provides pattern detection, framework-specific insights, and can even generate GitHub issues directly from DevTools!
+              <strong>Mosqit</strong> revolutionizes frontend debugging by combining Visual Bug Reporter, Android Logcat-inspired logging, and Chrome&apos;s built-in AI APIs (Gemini Nano).
+              Click any element to capture bugs, analyze console errors with AI, detect patterns, get framework-specific insights, and create professional GitHub issues - all directly from DevTools!
             </p>
             <p style={{ color: '#718096', lineHeight: '1.6' }}>
               Experience &lt;100ms response times, comprehensive metadata capture, recurring error detection, and actionable fix suggestions -
@@ -555,14 +581,46 @@ export default function Home() {
             </div>
 
             <div className="button-group">
-              <a href="/test/test-logger.html" className="btn btn-primary">🧪 Try Demo</a>
-              <a href="/tutorial" className="btn btn-secondary">📚 Tutorial</a>
-              <a href="https://github.com/ma-za-kpe/mosqit" className="btn btn-github" target="_blank" rel="noopener noreferrer">⭐ Star on GitHub</a>
+              <a
+                href="/test/test-logger.html"
+                className="btn btn-primary"
+                onClick={() => {
+                  trackButtonClick('try-demo', { location: 'hero' });
+                  trackFeature('demo', 'open');
+                }}
+              >
+                🧪 Try Demo
+              </a>
+              <a
+                href="/tutorial"
+                className="btn btn-secondary"
+                onClick={() => {
+                  trackButtonClick('tutorial', { location: 'hero' });
+                  trackLinkClick('tutorial', '/tutorial');
+                }}
+              >
+                📚 Tutorial
+              </a>
+              <a
+                href="https://github.com/ma-za-kpe/mosqit"
+                className="btn btn-github"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => {
+                  trackButtonClick('github-star', { location: 'hero' });
+                  trackSocialClick('github', 'star');
+                }}
+              >
+                ⭐ Star on GitHub
+              </a>
               <button
                 className="btn btn-secondary"
                 style={{ cursor: 'not-allowed', opacity: 0.7, position: 'relative' }}
                 disabled
                 title="Extension coming soon to Chrome Web Store!"
+                onClick={() => {
+                  trackButtonClick('install-extension-disabled', { location: 'hero', reason: 'coming_soon' });
+                }}
               >
                 📦 Install Extension
                 <span style={{
@@ -602,13 +660,38 @@ export default function Home() {
               </ol>
             </div>
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              <a href="/test/chrome-ai-status.html" className="btn btn-primary" style={{ background: '#E65100' }}>
+              <a
+                href="/test/chrome-ai-status.html"
+                className="btn btn-primary"
+                style={{ background: '#E65100' }}
+                onClick={() => {
+                  trackButtonClick('check-ai-status', { location: 'chrome-ai-warning' });
+                  trackFeature('ai-status-check', 'open');
+                }}
+              >
                 🔍 Check Your AI Status
               </a>
-              <a href="chrome://flags" className="btn btn-secondary" style={{ background: '#F57C00', color: 'white' }}>
+              <a
+                href="chrome://flags"
+                className="btn btn-secondary"
+                style={{ background: '#F57C00', color: 'white' }}
+                onClick={() => {
+                  trackButtonClick('open-chrome-flags', { location: 'chrome-ai-warning' });
+                  trackFeature('chrome-flags', 'navigate');
+                }}
+              >
                 ⚙️ Open Chrome Flags
               </a>
-              <a href="https://developer.chrome.com/docs/ai/writer-api" className="btn btn-secondary" target="_blank" rel="noopener noreferrer">
+              <a
+                href="https://developer.chrome.com/docs/ai/writer-api"
+                className="btn btn-secondary"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => {
+                  trackButtonClick('chrome-ai-docs', { location: 'chrome-ai-warning' });
+                  trackLinkClick('chrome-ai-docs', 'https://developer.chrome.com/docs/ai/writer-api', true);
+                }}
+              >
                 📚 Chrome AI Docs
               </a>
             </div>
@@ -624,6 +707,14 @@ export default function Home() {
               <div className="feature-card">
                 <h3><span className="feature-icon">🤖</span> AI-Powered Analysis</h3>
                 <p>Leverages Chrome&apos;s built-in Gemini Nano model with Writer API for intelligent debugging insights - completely on-device.</p>
+              </div>
+              <div className="feature-card">
+                <h3><span className="feature-icon">🐛</span> Visual Bug Reporter</h3>
+                <p>Click any element on a webpage to capture bugs visually. Automatically collects element info, console errors, and screenshot for comprehensive bug reports.</p>
+              </div>
+              <div className="feature-card">
+                <h3><span className="feature-icon">🚀</span> GitHub Issue Creation</h3>
+                <p>Create professional GitHub issues directly from DevTools. AI-generated titles, enhanced descriptions, and complete debugging context included automatically.</p>
               </div>
               <div className="feature-card">
                 <h3><span className="feature-icon">🎯</span> Universal Debugging</h3>
@@ -783,7 +874,7 @@ Cannot read property 'name' of null
                   <li style={{ marginBottom: '8px' }}>• Search logs with <code style={{ background: '#1a1b26', padding: '2px 6px', borderRadius: '3px' }}>Ctrl+F</code></li>
                   <li style={{ marginBottom: '8px' }}>• Press <code style={{ background: '#1a1b26', padding: '2px 6px', borderRadius: '3px' }}>Esc</code> to clear search</li>
                   <li style={{ marginBottom: '8px' }}>• Use arrow keys to navigate between logs</li>
-                  <li style={{ marginBottom: '8px' }}>• Logs persist across page reloads (IndexedDB storage)</li>
+                  <li style={{ marginBottom: '8px' }}>• Logs available during current debugging session</li>
                 </ul>
               </div>
             </div>
@@ -888,8 +979,8 @@ API response slow: 3.2s
                 <p>Sophisticated message passing between content scripts and extension. MAIN world execution with secure PostMessage protocol.</p>
               </div>
               <div className="feature-card">
-                <h3><span className="feature-icon">💾</span> Intelligent Storage</h3>
-                <p>Chrome Storage API for preferences, memory cache for 1000 recent logs, pattern cache, and reusable AI session management.</p>
+                <h3><span className="feature-icon">💾</span> Smart Memory Management</h3>
+                <p>Efficient in-memory log caching for current session, pattern detection cache, and reusable AI session management for optimal performance.</p>
               </div>
               <div className="feature-card">
                 <h3><span className="feature-icon">📈</span> Performance Metrics</h3>
@@ -908,10 +999,10 @@ API response slow: 3.2s
               We&apos;re continuously improving Mosqit with new features based on community feedback:
             </p>
             <div className="features-grid">
-              <div className="feature-card" style={{ opacity: 0.8 }}>
-                <h3><span className="feature-icon">🔗</span> GitHub Integration</h3>
-                <p>Create issues directly from debugging insights with AI-generated descriptions and reproduction steps.</p>
-                <div style={{ marginTop: '10px', fontSize: '0.9em', color: '#a0aec0' }}>🚧 In Development</div>
+              <div className="feature-card">
+                <h3><span className="feature-icon">✅</span> GitHub Integration (Released!)</h3>
+                <p>Now available! Create issues directly from debugging insights with AI-generated descriptions and reproduction steps.</p>
+                <div style={{ marginTop: '10px', fontSize: '0.9em', color: '#10b981', fontWeight: '600' }}>✅ Released in v1.0.0</div>
               </div>
               <div className="feature-card" style={{ opacity: 0.8 }}>
                 <h3><span className="feature-icon">📱</span> Mobile Dashboard</h3>
@@ -946,34 +1037,45 @@ API response slow: 3.2s
             <div style={{ background: '#f7fafc', padding: '20px', borderRadius: '10px', marginBottom: '20px' }}>
               <h3 style={{ color: '#2d3748', marginBottom: '15px' }}>✅ Implemented (Core Features)</h3>
               <ul style={{ color: '#4a5568', lineHeight: '1.8', paddingLeft: '20px' }}>
+                <li>Visual Bug Reporter with element selection and screenshot capture</li>
+                <li>GitHub Issue Creation with AI-generated content</li>
                 <li>AI-Powered Universal Debugging with Chrome Writer API</li>
                 <li>DevTools Panel with Logcat-inspired UI</li>
                 <li>Intelligent Pattern Detection System</li>
                 <li>Context-Aware Analysis (DOM, Stack, Dependencies)</li>
                 <li>40+ Fallback Patterns for Offline Operation</li>
                 <li>Content Script Bridge Architecture</li>
-                <li>Comprehensive Test Suite (50+ scenarios)</li>
+                <li>Comprehensive Test Suite (75+ scenarios)</li>
                 <li>100% On-Device Privacy</li>
+                <li>Copy Issue Content with visual feedback</li>
+                <li>Auto-recovery from invalid GitHub tokens</li>
               </ul>
             </div>
             <div style={{ background: '#fff5f5', padding: '20px', borderRadius: '10px', marginBottom: '20px' }}>
               <h3 style={{ color: '#16a34a', marginBottom: '15px' }}>✅ Recently Completed</h3>
               <ul style={{ color: '#4a5568', lineHeight: '1.8', paddingLeft: '20px' }}>
+                <li>Visual Bug Reporter with element selection and screenshot capture</li>
+                <li>GitHub Integration - Create issues directly from DevTools</li>
+                <li>AI-Generated issue titles and enhanced descriptions</li>
+                <li>Copy to clipboard with visual feedback</li>
+                <li>Auto-recovery from invalid GitHub tokens</li>
                 <li>Professional DevTools Panel with Android Logcat-inspired dark UI</li>
-                <li>IndexedDB persistent storage (10,000 logs, 7-day retention)</li>
                 <li>Chrome Writer & Prompt API Integration</li>
                 <li>Export/Import Debug Sessions with JSON format</li>
                 <li>Light/Dark Theme Toggle with saved preferences</li>
                 <li>Real-time log streaming with expandable metadata</li>
                 <li>Pattern tracking and recurring error detection</li>
+                <li>Developer Notes with debugging checklists</li>
+                <li>Comprehensive test suite (75+ test scenarios)</li>
               </ul>
             </div>
             <div style={{ background: '#fff5f5', padding: '20px', borderRadius: '10px', marginBottom: '20px' }}>
               <h3 style={{ color: '#2d3748', marginBottom: '15px' }}>🚧 In Development</h3>
               <ul style={{ color: '#4a5568', lineHeight: '1.8', paddingLeft: '20px' }}>
-                <li>GitHub Issue Generation with AI</li>
                 <li>Chrome Summarizer API Integration</li>
                 <li>Chrome Rewriter API for Error Simplification</li>
+                <li>Jira Integration</li>
+                <li>Video Recording for Bug Reproduction</li>
               </ul>
             </div>
             <div style={{ background: '#f0fff4', padding: '20px', borderRadius: '10px' }}>

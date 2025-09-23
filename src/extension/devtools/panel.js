@@ -832,6 +832,15 @@ ${this.escapeHtml(this.formatHTML(snapshot.html))}
                 <img src="${snapshot.screenshot}" alt="Element screenshot" style="max-width: 100%; border: 1px solid #414868; border-radius: 4px; margin-top: 4px;">
               </div>
             ` : ''}
+
+            ${!snapshot.elementPath && !snapshot.html && !snapshot.boundingBox && !snapshot.computedStyles && !snapshot.screenshot ? `
+              <div style="color: #f7768e; font-style: italic; text-align: center; padding: 16px;">
+                ⚠️ No DOM element found for this error<br>
+                <span style="font-size: 11px; color: #9aa5ce;">
+                  The error may not be directly related to a specific DOM element.
+                </span>
+              </div>
+            ` : ''}
           </div>
         </div>
       `;
@@ -997,18 +1006,57 @@ ${this.escapeHtml(this.formatHTML(snapshot.html))}
         }
 
         if (response?.success) {
-          // Now send the message to start capture
-          chrome.tabs.sendMessage(tabId, {
-            type: 'START_VISUAL_BUG_REPORT'
-          }, (response) => {
+          // The content-bridge should already be injected via manifest
+          // But we need to ensure it's ready to receive messages
+
+          // First, try to inject/re-inject the bridge to ensure it's there
+          console.log('[Mosqit] Ensuring content bridge is ready...');
+
+          // Use the background script to inject the bridge
+          chrome.runtime.sendMessage({
+            type: 'INJECT_CONTENT_BRIDGE',
+            tabId: tabId
+          }, (bridgeResponse) => {
             if (chrome.runtime.lastError) {
-              console.error('[Mosqit] Failed to start capture:', chrome.runtime.lastError);
-              this.updateCaptureStatus('Error: Failed to start capture. Please refresh the page.');
-            } else if (response?.success) {
-              this.updateCaptureStatus('Capture mode active - click an element on the page');
-            } else {
-              this.updateCaptureStatus('Ready to capture - click Start Visual Capture');
+              console.error('[Mosqit] Failed to inject bridge via background:', chrome.runtime.lastError);
             }
+
+            // Wait a bit for scripts to initialize
+            setTimeout(() => {
+              console.log('[Mosqit] Attempting to send START_VISUAL_BUG_REPORT to tab:', tabId);
+
+              // Try sending the message
+              chrome.tabs.sendMessage(tabId, {
+                type: 'START_VISUAL_BUG_REPORT'
+              }, (response) => {
+                if (chrome.runtime.lastError) {
+                  console.error('[Mosqit] Failed to start capture:', chrome.runtime.lastError);
+                  console.error('[Mosqit] Error details:', chrome.runtime.lastError.message);
+
+                  // Fallback: Try to start it directly via eval
+                  chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+                    if (tabs[0] && tabs[0].id === tabId) {
+                      chrome.debugger.attach({tabId: tabId}, '1.0', () => {
+                        if (chrome.runtime.lastError) {
+                          console.error('[Mosqit] Cannot use debugger:', chrome.runtime.lastError);
+                          this.updateCaptureStatus('Error: Please refresh page and try again.');
+                        } else {
+                          // Detach immediately, we just wanted to check
+                          chrome.debugger.detach({tabId: tabId});
+                          this.updateCaptureStatus('Visual capture mode activating...');
+                        }
+                      });
+                    }
+                  });
+                } else if (response?.success) {
+                  console.log('[Mosqit] Visual capture started successfully');
+                  this.updateCaptureStatus('Capture mode active - click an element on the page');
+                } else {
+                  console.log('[Mosqit] Message sent but no proper response:', response);
+                  this.updateCaptureStatus('Visual capture mode activated - hover over elements');
+                }
+              });
+            }, 200);
           });
         } else {
           this.updateCaptureStatus('Error: ' + (response?.error || 'Failed to inject bug reporter.'));
@@ -1185,97 +1233,251 @@ ${this.escapeHtml(this.formatHTML(snapshot.html))}
       return;
     }
 
-    // Generate issue using AI or template
-    const issue = await this.createIssueContent({
-      ...this.capturedBug,
-      description,
-      expected,
-      issueTypes,
-      impact
-    });
+    // Show loading state
+    const generateBtn = document.getElementById('vb-generate');
+    const originalText = generateBtn.textContent;
+    generateBtn.disabled = true;
+    generateBtn.innerHTML = '🤖 AI generating issue...';
 
-    // Display preview
-    const preview = document.getElementById('vb-preview');
-    const content = document.getElementById('vb-issue-content');
-    preview.style.display = 'block';
-    content.textContent = issue;
+    try {
+      // Generate intelligent title and description using AI
+      const aiContext = {
+        userDescription: description,
+        expected: expected,
+        element: this.capturedBug?.element,
+        errors: this.collectRecentErrors().slice(0, 2),
+        issueTypes: issueTypes,
+        impact: impact,
+        url: this.capturedBug?.page?.url || window.location.href
+      };
 
-    // Enable submit button
-    document.getElementById('vb-submit').disabled = false;
+      const { title, enhancedDescription } = await this.generateAITitle(aiContext);
+
+      // Create comprehensive issue content with AI insights
+      const issue = await this.createIssueContent({
+        ...this.capturedBug,
+        description: enhancedDescription || description,
+        expected,
+        issueTypes,
+        impact,
+        aiGeneratedTitle: title
+      });
+
+      // Display the generated issue with AI title
+      const preview = document.getElementById('vb-preview');
+      const content = document.getElementById('vb-issue-content');
+
+      content.innerHTML = `
+        <div class="ai-generated-header">
+          <h3>${title}</h3>
+          <div class="header-actions">
+            <span class="ai-badge">✨ AI Generated</span>
+            <button class="copy-btn" onclick="window.mosqitPanel.copyIssueContent()" title="Copy issue content">📋 Copy</button>
+          </div>
+        </div>
+        <div id="issue-content-text" class="markdown-content" data-original-markdown="${issue.replace(/"/g, '&quot;')}">${this.renderMarkdown(issue)}</div>
+      `;
+      preview.style.display = 'block';
+
+      // Enable submit button
+      document.getElementById('vb-submit').disabled = false;
+
+    } catch (error) {
+      console.error('[Mosqit] AI generation failed:', error);
+      // Fallback to simple method
+      const issue = await this.createIssueContent({
+        ...this.capturedBug,
+        description,
+        expected,
+        issueTypes,
+        impact
+      });
+
+      const preview = document.getElementById('vb-preview');
+      const content = document.getElementById('vb-issue-content');
+      content.innerHTML = `
+        <div class="ai-generated-header">
+          <h3>[Bug]: ${description.substring(0, 60)}${description.length > 60 ? '...' : ''}</h3>
+          <div class="header-actions">
+            <button class="copy-btn" onclick="window.mosqitPanel.copyIssueContent()" title="Copy issue content">📋 Copy</button>
+          </div>
+        </div>
+        <div id="issue-content-text" class="markdown-content" data-original-markdown="${issue.replace(/"/g, '&quot;')}">${this.renderMarkdown(issue)}</div>
+      `;
+      preview.style.display = 'block';
+      document.getElementById('vb-submit').disabled = false;
+    } finally {
+      // Restore button
+      generateBtn.disabled = false;
+      generateBtn.innerHTML = originalText;
+    }
   }
 
   async createIssueContent(bugData) {
-    // Collect console errors and relevant logs
-    const recentErrors = this.collectRecentErrors();
-    const stackTraces = this.extractStackTraces(recentErrors);
-    const consoleLogs = this.getRecentConsoleLogs();
+    // Collect only relevant error data for debugging
+    const recentErrors = this.collectRecentErrors().slice(0, 3); // Only top 3 errors
+    const hasErrors = recentErrors.length > 0;
 
-    // Get source context if available
-    const sourceContext = await this.getSourceContext(recentErrors);
+    // Get AI analysis for recent errors
+    const aiAnalysis = await this.getAIAnalysisForErrors(recentErrors);
 
-    const body = `## 🐛 Bug Description
+    // Follow GitHub best practices for issue structure
+    let body = `## Bug Description
 ${bugData.description}
 
-## 🎯 Expected Behavior
-${bugData.expected || 'N/A'}
+## Expected Behavior
+${bugData.expected || 'Please describe what you expected to happen instead.'}
 
-## 📸 Visual Evidence
-![Screenshot](${bugData.screenshot || 'screenshot-url'})
+## Steps to Reproduce
+1. Navigate to \`${bugData.page?.url}\`
+2. ${bugData.description.includes('click') ? 'Click on' : 'Interact with'} element: \`${bugData.element?.selector || 'the affected element'}\`
+3. Observe the unexpected behavior
 
-## 🔴 Console Errors & Stack Traces
-${this.formatErrors(recentErrors)}
+## Current Behavior
+${bugData.description}
 
-## 📊 Debug Information
-
-### Element Details
-\`\`\`javascript
-{
-  selector: "${bugData.element?.selector || 'N/A'}",
-  dimensions: { width: ${bugData.element?.position?.width}px, height: ${bugData.element?.position?.height}px },
-  position: { x: ${Math.round(bugData.element?.position?.x || 0)}, y: ${Math.round(bugData.element?.position?.y || 0)} },
-  styles: {
-    backgroundColor: "${bugData.element?.styles?.backgroundColor || 'N/A'}",
-    color: "${bugData.element?.styles?.color || 'N/A'}",
-    fontSize: "${bugData.element?.styles?.fontSize || 'N/A'}",
-    fontFamily: "${bugData.element?.styles?.fontFamily || 'N/A'}"
-  },
-  computedRole: "${bugData.element?.role || 'N/A'}",
-  innerHTML: "${this.truncateHTML(bugData.element?.innerHTML) || 'N/A'}"
-}
-\`\`\`
-
-### Source Context
-${sourceContext}
-
-### Recent Console Activity
-\`\`\`log
-${consoleLogs}
-\`\`\`
-
-## 📍 Page Context
-- **URL**: \`${bugData.page?.url || window.location.href}\`
+## Environment
+- **URL**: ${bugData.page?.url || window.location.href}
+- **Browser**: ${this.getBrowserInfo(bugData.page?.userAgent)}
 - **Viewport**: ${bugData.page?.viewport?.width}×${bugData.page?.viewport?.height}
-- **User Agent**: ${bugData.page?.userAgent || navigator.userAgent}
-- **Timestamp**: ${new Date().toISOString()}
-- **Session Duration**: ${this.getSessionDuration()}
+- **Element**: \`${bugData.element?.selector || 'N/A'}\`
+- **Position**: (${Math.round(bugData.element?.position?.x || 0)}, ${Math.round(bugData.element?.position?.y || 0)})
+`;
 
-## ⚡ Impact Assessment
-**${bugData.impact.toUpperCase()}** - ${this.getImpactDescription(bugData.impact)}
+    // Console errors section
+    if (hasErrors) {
+      body += `
+## Console Errors
+\`\`\`
+${recentErrors.map(err => {
+  const location = err.file ? `${err.file}:${err.line}:${err.column}` : 'unknown location';
+  return `${err.message.substring(0, 200)}\n  at ${location}`;
+}).join('\n\n')}
+\`\`\`
+`;
 
-## 🏷️ Issue Classification
-${bugData.issueTypes.map(type => `- [x] ${type}`).join('\n')}
+      // Add stack trace for the most relevant error
+      const primaryError = recentErrors[0];
+      if (primaryError.stack) {
+        const stackLines = primaryError.stack.split('\n').slice(0, 8).join('\n');
+        body += `
+<details>
+<summary>Stack Trace</summary>
 
-## 📋 Additional Developer Notes
-${stackTraces.length > 0 ? '### Stack Traces\n' + stackTraces : ''}
+\`\`\`
+${stackLines}
+\`\`\`
+</details>
+`;
+      }
+    } else {
+      body += `
+## Console Errors
+No console errors captured at the time of this report.
+`;
+    }
 
-### Network Activity
-${this.getRecentNetworkErrors()}
+    // Screenshot section
+    if (bugData.screenshot) {
+      // For GitHub, we need to provide instructions since base64 images don't render
+      body += `
+## Screenshot
+<details>
+<summary>Click to see screenshot instructions</summary>
 
-### Performance Metrics
-${this.getPerformanceMetrics()}
+A screenshot was captured for this issue. To include it in GitHub:
 
----
-*Generated by Mosqit Visual Bug Reporter • ${new Date().toLocaleString()}*
+### Option 1: Direct Upload (Recommended)
+1. Save the screenshot from Mosqit DevTools panel
+2. Drag and drop the image file into this GitHub issue
+3. GitHub will upload and insert the image automatically
+
+### Option 2: Manual Upload
+1. Right-click the screenshot in Mosqit DevTools
+2. Select "Save image as..."
+3. Click "Attach files" below this issue
+4. Select the saved screenshot file
+
+### Option 3: Use Placeholder
+Replace this line with your uploaded image:
+\`\`\`
+![Screenshot](upload-your-screenshot-here.png)
+\`\`\`
+
+</details>
+
+> **📸 Visual bug captured** - Screenshot available in Mosqit DevTools panel
+`;
+    }
+
+    // AI Analysis section
+    if (aiAnalysis && aiAnalysis.length > 0) {
+      body += `
+## AI Analysis
+${aiAnalysis}
+`;
+    } else {
+      body += `
+## AI Analysis
+No specific AI analysis available. Please ensure console errors are present for detailed analysis.
+`;
+    }
+
+    // Code Context (if available)
+    if (hasErrors) {
+      const relevantFiles = [...new Set(recentErrors
+        .filter(err => err.file)
+        .map(err => err.file)
+      )];
+
+      if (relevantFiles.length > 0) {
+        body += `
+## Affected Files
+${relevantFiles.map(file => `- \`${file}\``).join('\n')}
+`;
+      }
+    }
+
+    // Priority and classification
+    body += `
+## Priority & Impact
+- **Impact Level**: ${bugData.impact.charAt(0).toUpperCase() + bugData.impact.slice(1)}
+- **Issue Types**: ${bugData.issueTypes.join(', ')}
+`;
+
+    // Additional context for high priority issues
+    if (bugData.impact === 'critical' || bugData.impact === 'high') {
+      body += `- **Urgency**: This issue affects user functionality and should be prioritized
+`;
+    }
+
+    // Developer Information and Next Steps
+    body += `
+## Developer Notes
+**To reproduce this issue:**
+1. Open the affected URL: \`${bugData.page?.url}\`
+2. Open browser DevTools (F12)
+3. Look for the element: \`${bugData.element?.selector}\`
+4. Check console for errors related to the reported functionality
+
+**Debugging checklist:**
+- [ ] Verify element exists and is accessible
+- [ ] Check for JavaScript errors in console
+- [ ] Inspect network requests for failures
+- [ ] Validate CSS styling and layout
+- [ ] Test across different browsers/devices
+
+## Additional Information
+- **Captured at**: ${new Date().toLocaleString()}
+- **User Agent**: ${this.getBrowserInfo(bugData.page?.userAgent)}
+- **Page Title**: ${bugData.page?.title || document.title}
+- **Reported via**: [Mosqit Visual Bug Reporter](https://github.com/your-org/mosqit)
+
+<!--
+This issue was automatically generated by Mosqit Visual Bug Reporter
+Element selector: ${bugData.element?.selector || 'N/A'}
+Page title: ${bugData.page?.title || document.title}
+-->
 `;
 
     return body;
@@ -1291,21 +1493,397 @@ ${this.getPerformanceMetrics()}
     return descriptions[impact] || 'Visual issue';
   }
 
+  getBrowserInfo(userAgent) {
+    const ua = userAgent || navigator.userAgent;
+
+    // Extract browser name and version
+    if (ua.includes('Chrome')) {
+      const match = ua.match(/Chrome\/(\d+)/);
+      return `Chrome ${match ? match[1] : 'Unknown'}`;
+    } else if (ua.includes('Firefox')) {
+      const match = ua.match(/Firefox\/(\d+)/);
+      return `Firefox ${match ? match[1] : 'Unknown'}`;
+    } else if (ua.includes('Safari') && !ua.includes('Chrome')) {
+      const match = ua.match(/Version\/(\d+)/);
+      return `Safari ${match ? match[1] : 'Unknown'}`;
+    } else if (ua.includes('Edge')) {
+      const match = ua.match(/Edge\/(\d+)/);
+      return `Edge ${match ? match[1] : 'Unknown'}`;
+    }
+
+    return 'Unknown Browser';
+  }
+
+  async generateAITitle(context) {
+    try {
+      // Build a comprehensive context for AI analysis
+      const contextInfo = this.buildAIContext(context);
+
+      // Use Chrome's built-in AI to generate title and description
+      if (typeof window !== 'undefined' && window.ai?.languageModel) {
+        const session = await window.ai.languageModel.create({
+          systemPrompt: `You are a GitHub issue expert. Generate a concise, descriptive bug report title and enhanced description.
+
+Rules:
+- Title: 50-80 characters, specific and actionable
+- Format: [Bug]: Clear description of the problem
+- Include element type if UI-related
+- Focus on the impact, not generic terms
+- Use technical terms appropriately
+
+Example good titles:
+- [Bug]: Login button unresponsive on mobile viewport
+- [Bug]: Form validation errors not clearing after correction
+- [Bug]: Navigation menu overlaps content on scroll
+- [Bug]: API timeout causes blank dashboard on load
+
+Context will include: user description, element selector, console errors, page URL, impact level.`
+        });
+
+        const prompt = `Generate a GitHub issue title and enhanced description for this bug:
+
+User Description: "${context.userDescription}"
+Expected: "${context.expected || 'Not specified'}"
+Element: "${context.element?.selector || 'No specific element'}"
+URL: "${context.url}"
+Impact: ${context.impact}
+Issue Types: ${context.issueTypes.join(', ')}
+${context.errors.length > 0 ? 'Console Errors: ' + context.errors.map(e => e.message.substring(0, 100)).join('; ') : 'No console errors'}
+
+Return JSON format:
+{
+  "title": "Generated title here",
+  "enhancedDescription": "Enhanced description with technical details"
+}`;
+
+        const response = await session.prompt(prompt);
+        await session.destroy();
+
+        try {
+          const result = JSON.parse(response);
+          return {
+            title: result.title || this.formatIssueTitle('Visual Bug Report', context),
+            enhancedDescription: result.enhancedDescription || context.userDescription
+          };
+        } catch (parseError) {
+          console.warn('[Mosqit] Failed to parse AI response, using fallback');
+          return this.generateFallbackTitle(context);
+        }
+      } else {
+        // Fallback when AI is not available
+        return this.generateFallbackTitle(context);
+      }
+    } catch (error) {
+      console.error('[Mosqit] AI title generation failed:', error);
+      return this.generateFallbackTitle(context);
+    }
+  }
+
+  generateFallbackTitle(context) {
+    // Smart fallback based on available context
+    let title = context.userDescription;
+
+    // Enhance with element info if available
+    if (context.element?.selector) {
+      const elementType = this.getElementType(context.element.selector);
+      if (elementType) {
+        title = `${elementType} issue: ${title}`;
+      }
+    }
+
+    // Add impact context for high priority
+    if (context.impact === 'critical') {
+      title = `Critical: ${title}`;
+    } else if (context.impact === 'high') {
+      title = `High Priority: ${title}`;
+    }
+
+    // Clean and truncate
+    title = title.substring(0, 80).trim();
+    if (title.length === 80) title += '...';
+
+    return {
+      title: `[Bug]: ${title}`,
+      enhancedDescription: context.userDescription
+    };
+  }
+
+  getElementType(selector) {
+    if (selector.includes('button')) return 'Button';
+    if (selector.includes('input')) return 'Input field';
+    if (selector.includes('form')) return 'Form';
+    if (selector.includes('nav')) return 'Navigation';
+    if (selector.includes('modal') || selector.includes('dialog')) return 'Modal/Dialog';
+    if (selector.includes('dropdown') || selector.includes('select')) return 'Dropdown';
+    if (selector.includes('menu')) return 'Menu';
+    if (selector.includes('card')) return 'Card component';
+    return null;
+  }
+
+  buildAIContext(context) {
+    return {
+      description: context.userDescription,
+      element: context.element?.selector,
+      errors: context.errors?.map(e => e.message.substring(0, 150)),
+      url: context.url,
+      impact: context.impact,
+      issueTypes: context.issueTypes
+    };
+  }
+
+  copyIssueContent() {
+    // Get the raw markdown content stored when the issue was generated
+    const issueContentElement = document.getElementById('issue-content-text');
+    if (!issueContentElement) {
+      console.warn('[Mosqit] Issue content element not found');
+      return;
+    }
+
+    // Use the original markdown text stored in data attribute, or fallback to text content
+    const textContent = issueContentElement.dataset.originalMarkdown ||
+                       issueContentElement.textContent ||
+                       issueContentElement.innerText;
+
+    // Use the Clipboard API if available
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(textContent).then(() => {
+        this.showCopyFeedback(true);
+      }).catch(err => {
+        console.error('[Mosqit] Failed to copy with Clipboard API:', err);
+        this.fallbackCopyMethod(textContent);
+      });
+    } else {
+      // Fallback method for older browsers
+      this.fallbackCopyMethod(textContent);
+    }
+  }
+
+  fallbackCopyMethod(text) {
+    try {
+      // Create a temporary textarea element
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.left = '-999999px';
+      textarea.style.top = '-999999px';
+      document.body.appendChild(textarea);
+
+      // Select and copy the text
+      textarea.focus();
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+
+      this.showCopyFeedback(true);
+    } catch (err) {
+      console.error('[Mosqit] Fallback copy failed:', err);
+      this.showCopyFeedback(false);
+    }
+  }
+
+  showCopyFeedback(success) {
+    const copyBtn = document.querySelector('.copy-btn');
+    if (!copyBtn) return;
+
+    const originalText = copyBtn.innerHTML;
+
+    if (success) {
+      copyBtn.innerHTML = '✅ Copied!';
+      copyBtn.style.background = '#10b981';
+    } else {
+      copyBtn.innerHTML = '❌ Failed';
+      copyBtn.style.background = '#ef4444';
+    }
+
+    // Reset after 2 seconds
+    setTimeout(() => {
+      copyBtn.innerHTML = originalText;
+      copyBtn.style.background = '';
+    }, 2000);
+  }
+
+  renderMarkdown(text) {
+    if (!text) return '';
+
+    // Simple markdown rendering - just display as formatted text
+    return `<pre class="markdown-text">${text}</pre>`;
+  }
+
+  formatIssueTitle(rawTitle, bugData) {
+    // Follow GitHub best practices: [Bug]: Descriptive title
+    const description = bugData?.description || rawTitle;
+
+    // Extract key information for a descriptive title
+    let title = description.length > 60 ?
+      description.substring(0, 60) + '...' :
+      description;
+
+    // Clean up title - remove line breaks and extra spaces
+    title = title.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+
+    // Add element context if available
+    const element = bugData?.element?.selector;
+    if (element && element !== 'N/A') {
+      const shortElement = element.length > 20 ?
+        element.substring(0, 20) + '...' :
+        element;
+      title += ` (${shortElement})`;
+    }
+
+    return `[Bug]: ${title}`;
+  }
+
+  async getAIAnalysisForErrors(errors) {
+    // If no errors, provide helpful debugging guidance
+    if (!errors || errors.length === 0) {
+      return `🤖 **No Console Errors Detected**
+
+**Debugging Checklist:**
+☑️ Check browser console for warnings or info messages
+☑️ Verify element exists in DOM before interaction
+☑️ Check Network tab for failed API requests
+☑️ Ensure all JavaScript files loaded successfully
+☑️ Test in different browsers for compatibility
+
+**Common Issues Without Errors:**
+• Element might be dynamically loaded - add appropriate wait/delay
+• Event listeners might not be properly attached
+• CSS might be hiding or disabling the element
+• JavaScript might be blocked by browser extensions
+• Timing issues with async operations`;
+    }
+
+    // Try to generate AI analysis for the errors
+    try {
+      if (typeof window !== 'undefined' && window.ai?.languageModel) {
+        const session = await window.ai.languageModel.create({
+          systemPrompt: `You are a debugging expert. Analyze JavaScript errors and provide concise, actionable insights to help developers fix bugs quickly.`
+        });
+
+        const analysisResults = [];
+
+        // Analyze each unique error
+        for (const error of errors.slice(0, 2)) { // Limit to 2 errors for performance
+          const prompt = `Analyze this JavaScript error and provide a concise solution:
+Error: ${error.message}
+File: ${error.file || 'unknown'}
+Line: ${error.line || 'unknown'}
+
+Provide:
+1. Root cause (1 sentence)
+2. Quick fix suggestion (1-2 sentences)`;
+
+          try {
+            const response = await session.prompt(prompt);
+            if (response && response.length > 10) {
+              analysisResults.push(`🤖 **${error.file}:${error.line}**\n${response.trim()}`);
+            }
+          } catch (err) {
+            console.warn('[Mosqit] Failed to analyze individual error:', err);
+          }
+        }
+
+        await session.destroy();
+
+        if (analysisResults.length > 0) {
+          return analysisResults.join('\n\n');
+        }
+      }
+    } catch (error) {
+      console.warn('[Mosqit] AI analysis generation failed:', error);
+    }
+
+    // Fallback: Provide basic analysis based on error patterns
+    return this.generateBasicErrorAnalysis(errors);
+  }
+
+  generateBasicErrorAnalysis(errors) {
+    const analysisResults = [];
+
+    for (const error of errors.slice(0, 2)) {
+      let analysis = '';
+      const msg = error.message.toLowerCase();
+
+      // Common error pattern analysis
+      if (msg.includes('cannot read properties of null') || msg.includes('cannot read property')) {
+        analysis = `🤖 **Null Reference Error** at ${error.file}:${error.line}
+This occurs when trying to access a property of a null or undefined object.
+**Fix**: Add null checks before accessing properties: \`if (object && object.property)\``;
+      } else if (msg.includes('is not a function')) {
+        analysis = `🤖 **Type Error** at ${error.file}:${error.line}
+The code is trying to call something that isn't a function.
+**Fix**: Verify the variable type and ensure the function exists before calling it.`;
+      } else if (msg.includes('is not defined')) {
+        analysis = `🤖 **Reference Error** at ${error.file}:${error.line}
+Variable or function is being used before it's declared.
+**Fix**: Ensure the variable is declared and in scope before use.`;
+      } else if (msg.includes('network') || msg.includes('fetch')) {
+        analysis = `🤖 **Network Error** at ${error.file}:${error.line}
+Failed to complete a network request.
+**Fix**: Check network connectivity, CORS settings, and API endpoints.`;
+      } else {
+        analysis = `🤖 **JavaScript Error** at ${error.file}:${error.line}
+${error.message.substring(0, 100)}
+**Debug**: Check the console for full error details and stack trace.`;
+      }
+
+      if (analysis) {
+        analysisResults.push(analysis);
+      }
+    }
+
+    // If no analysis was generated, provide generic debugging tips
+    if (analysisResults.length === 0) {
+      return `🤖 **Error Analysis**
+
+**Error Summary:**
+${errors.slice(0, 2).map(e => `• ${e.message.substring(0, 80)}${e.message.length > 80 ? '...' : ''}`).join('\n')}
+
+**General Debugging Steps:**
+1. Check the full error stack trace in the console
+2. Verify all variables are properly initialized
+3. Add console.log statements before the error line
+4. Check for typos in property/method names
+5. Ensure all dependencies are loaded
+
+**Need More Help?**
+Share the full error message and code context with your team or on Stack Overflow for specific guidance.`;
+    }
+
+    return analysisResults.join('\n\n');
+  }
+
   collectRecentErrors() {
     // Collect errors from the last 5 minutes
     const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
-    return this.logs.filter(log =>
+
+    // Use a Map to deduplicate errors by message and location
+    const uniqueErrors = new Map();
+
+    this.logs.filter(log =>
       log.level === 'error' &&
       new Date(log.timestamp).getTime() > fiveMinutesAgo
-    ).map(log => ({
-      message: log.message,
-      stack: log.stack || '',
-      file: log.file,
-      line: log.line,
-      column: log.column,
-      timestamp: log.timestamp,
-      type: log.type || 'Error'
-    }));
+    ).forEach(log => {
+      // Create unique key based on message and location
+      const key = `${log.message}_${log.file}_${log.line}`;
+
+      // Only add if we haven't seen this exact error before
+      if (!uniqueErrors.has(key)) {
+        uniqueErrors.set(key, {
+          message: log.message,
+          stack: log.stack || '',
+          file: log.file,
+          line: log.line,
+          column: log.column,
+          timestamp: log.timestamp,
+          type: log.type || 'Error',
+          analysis: log.analysis
+        });
+      }
+    });
+
+    // Return unique errors as array
+    return Array.from(uniqueErrors.values());
   }
 
   extractStackTraces(errors) {
@@ -1375,7 +1953,9 @@ ${error.stack ? 'Stack Trace:\n' + this.formatStackTrace(error.stack, error.file
       const timestamp = new Date(log.timestamp).toLocaleTimeString();
       const location = log.file ? ` [${log.file}:${log.line}]` : '';
       const levelIcon = this.getLevelIcon(log.level);
-      return `[${timestamp}] ${levelIcon} ${log.level.toUpperCase()}${location}: ${log.message}`;
+      // Truncate long messages to save space
+      const message = log.message.length > 150 ? log.message.substring(0, 150) + '...' : log.message;
+      return `[${timestamp}] ${levelIcon} ${log.level.toUpperCase()}${location}: ${message}`;
     }).join('\n');
   }
 
@@ -1483,9 +2063,349 @@ Memory Usage: ${this.getMemoryUsage()}
   }
 
   async submitToGitHub() {
-    // This would submit to GitHub via API
-    console.log('[Mosqit] Submitting to GitHub...');
-    alert('GitHub integration coming soon! For now, copy the issue content and create manually.');
+    console.log('[Mosqit] Preparing GitHub issue submission...');
+
+    // Get the generated issue content and create proper title
+    const rawTitle = document.querySelector('#vb-issue-content h3')?.textContent || 'Visual Bug Report';
+    const issueTitle = this.formatIssueTitle(rawTitle, this.capturedBug);
+    const issueBody = document.querySelector('#vb-issue-content pre')?.textContent ||
+                      document.querySelector('#vb-issue-content')?.textContent || '';
+
+    if (!issueBody) {
+      alert('Please generate the issue content first');
+      return;
+    }
+
+    // Show loading state
+    const submitBtn = document.getElementById('vb-submit');
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '⏳ Submitting to GitHub...';
+
+    // Add progress indicator
+    this.showProgressOverlay('Creating GitHub issue...');
+
+    // Check if we have GitHub settings stored
+    const settings = await this.getGitHubSettings();
+
+    if (!settings.token || !settings.repo) {
+      // Hide progress and restore button
+      this.hideProgressOverlay();
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalText;
+
+      // Show settings dialog
+      this.showGitHubSettings(issueTitle, issueBody);
+      return;
+    }
+
+    // Submit to GitHub
+    try {
+      this.updateProgressMessage('Authenticating with GitHub...');
+      await new Promise(resolve => setTimeout(resolve, 500)); // Visual feedback
+
+      this.updateProgressMessage('Creating issue...');
+      const result = await this.createGitHubIssue(settings, issueTitle, issueBody);
+
+      if (result.success) {
+        this.updateProgressMessage('✅ Issue created successfully!');
+
+        // Show success with issue number
+        setTimeout(() => {
+          this.hideProgressOverlay();
+          this.showToast(`✅ Issue created: #${result.number}`, 'success');
+
+          // Open the issue in a new tab
+          if (result.url) {
+            window.open(result.url, '_blank');
+          }
+
+          // Clear the form
+          this.resetVisualBugReporter();
+        }, 1500);
+      } else {
+        throw new Error(result.error || 'Failed to create issue');
+      }
+    } catch (error) {
+      console.error('[Mosqit] GitHub submission error:', error);
+      this.hideProgressOverlay();
+
+      // Check if it's an authentication error - clear invalid token and show settings
+      if (error.message.includes('Invalid GitHub token') ||
+          error.message.includes('401') ||
+          error.message.includes('Unauthorized')) {
+
+        // Clear the invalid token from storage
+        await this.clearGitHubSettings();
+
+        // Show settings dialog again so user can enter correct token
+        this.showToast('❌ Invalid token cleared. Please enter valid credentials.', 'error');
+        setTimeout(() => {
+          this.showGitHubSettings(issueTitle, issueBody, 'Previous token was invalid and has been cleared. Please enter valid credentials.');
+        }, 2000);
+
+      } else if (error.message.includes('Repository not found') ||
+                 error.message.includes('404')) {
+
+        // Clear invalid repo and show settings
+        await this.clearGitHubSettings();
+
+        this.showToast('❌ Repository not found. Please check your settings.', 'error');
+        setTimeout(() => {
+          this.showGitHubSettings(issueTitle, issueBody, 'Repository not found. Please check the format (owner/repo) and ensure you have access.');
+        }, 2000);
+
+      } else {
+        // For other errors, just show the toast
+        this.showToast('❌ ' + error.message, 'error');
+      }
+    } finally {
+      // Restore button state
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalText;
+    }
+  }
+
+  async getGitHubSettings() {
+    return new Promise((resolve) => {
+      chrome.storage.sync.get(['githubToken', 'githubRepo'], (result) => {
+        resolve({
+          token: result.githubToken || '',
+          repo: result.githubRepo || ''
+        });
+      });
+    });
+  }
+
+  async saveGitHubSettings(token, repo) {
+    return new Promise((resolve) => {
+      chrome.storage.sync.set({
+        githubToken: token,
+        githubRepo: repo
+      }, resolve);
+    });
+  }
+
+  async clearGitHubSettings() {
+    return new Promise((resolve) => {
+      chrome.storage.sync.remove(['githubToken', 'githubRepo'], () => {
+        console.log('[Mosqit] GitHub settings cleared');
+        resolve();
+      });
+    });
+  }
+
+  showGitHubSettings(issueTitle, issueBody, errorMessage = null) {
+    const dialog = document.createElement('div');
+    dialog.className = 'github-settings-dialog';
+    dialog.innerHTML = `
+      <div class="dialog-overlay"></div>
+      <div class="dialog-content">
+        <h3>🔧 GitHub Settings</h3>
+        <p>Configure GitHub integration to submit issues directly.</p>
+        ${errorMessage ? `<div class="error-message" style="background: #fee; border: 1px solid #f99; padding: 8px; border-radius: 4px; color: #c33; margin-bottom: 16px;"><strong>⚠️ ${errorMessage}</strong></div>` : ''}
+
+        <div class="form-group">
+          <label>GitHub Personal Access Token:</label>
+          <input type="password" id="github-token" placeholder="ghp_xxxxxxxxxxxx">
+          <small>Create at: <a href="https://github.com/settings/tokens/new?scopes=repo" target="_blank">github.com/settings/tokens</a></small>
+        </div>
+
+        <div class="form-group">
+          <label>Repository (owner/name):</label>
+          <input type="text" id="github-repo" placeholder="username/repository">
+        </div>
+
+        <div class="dialog-actions">
+          <button class="btn-cancel">Cancel</button>
+          <button class="btn-save">Save & Submit Issue</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(dialog);
+
+    // Load existing settings (only if not showing after an error)
+    if (!errorMessage) {
+      this.getGitHubSettings().then(settings => {
+        if (settings.token) document.getElementById('github-token').value = settings.token;
+        if (settings.repo) document.getElementById('github-repo').value = settings.repo;
+      });
+    }
+
+    // Handle save
+    dialog.querySelector('.btn-save').addEventListener('click', async () => {
+      const token = document.getElementById('github-token').value.trim();
+      const repo = document.getElementById('github-repo').value.trim();
+
+      if (!token || !repo) {
+        alert('Please fill in all fields');
+        return;
+      }
+
+      // Save settings
+      await this.saveGitHubSettings(token, repo);
+
+      // Remove dialog
+      dialog.remove();
+
+      // Try submitting again
+      const settings = { token, repo };
+      try {
+        const result = await this.createGitHubIssue(settings, issueTitle, issueBody);
+        if (result.success) {
+          this.showToast(`✅ Issue created: #${result.number}`, 'success');
+          if (result.url) {
+            window.open(result.url, '_blank');
+          }
+          this.resetVisualBugReporter();
+        }
+      } catch (error) {
+        this.showToast('❌ ' + error.message, 'error');
+      }
+    });
+
+    // Handle cancel
+    dialog.querySelector('.btn-cancel').addEventListener('click', () => {
+      dialog.remove();
+    });
+  }
+
+  async createGitHubIssue(settings, title, body) {
+    const [owner, repo] = settings.repo.split('/');
+
+    if (!owner || !repo) {
+      throw new Error('Invalid repository format. Use: owner/repo');
+    }
+
+    // Truncate body if it exceeds GitHub's limit (65536 characters)
+    const MAX_BODY_LENGTH = 65000; // Leave some buffer
+    let truncatedBody = body;
+    if (body.length > MAX_BODY_LENGTH) {
+      // Keep the most important parts and add truncation notice
+      const truncationNotice = '\n\n---\n*[Content truncated due to GitHub\'s 65536 character limit. Full details available in DevTools.]*';
+      truncatedBody = body.substring(0, MAX_BODY_LENGTH - truncationNotice.length) + truncationNotice;
+      console.warn('[Mosqit] Issue body truncated from', body.length, 'to', truncatedBody.length, 'characters');
+    }
+
+    try {
+      const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/issues`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `token ${settings.token}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          title: title,
+          body: truncatedBody
+          // Note: labels removed - they need to exist in the repo first
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        console.error('[Mosqit] GitHub API Error:', error);
+
+        // Provide more specific error messages
+        if (response.status === 401) {
+          throw new Error('Invalid GitHub token. Please check your personal access token.');
+        } else if (response.status === 404) {
+          throw new Error('Repository not found. Check the format: owner/repo');
+        } else if (response.status === 422) {
+          const validationErrors = error.errors ? error.errors.map(e => e.message).join(', ') : error.message;
+          throw new Error(`Validation failed: ${validationErrors}`);
+        } else {
+          throw new Error(error.message || `GitHub API error: ${response.status}`);
+        }
+      }
+
+      const issue = await response.json();
+      return {
+        success: true,
+        number: issue.number,
+        url: issue.html_url
+      };
+    } catch (error) {
+      console.error('[Mosqit] GitHub API error:', error);
+      throw error;
+    }
+  }
+
+  resetVisualBugReporter() {
+    // Reset the visual bug reporter UI
+    document.getElementById('vb-capture-section').style.display = 'block';
+    document.getElementById('vb-content').style.display = 'none';
+    document.getElementById('vb-content').innerHTML = '';
+    this.capturedBug = null;
+  }
+
+  showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+      toast.classList.add('show');
+    }, 10);
+
+    setTimeout(() => {
+      toast.classList.remove('show');
+      setTimeout(() => toast.remove(), 300);
+    }, 3000);
+  }
+
+  showProgressOverlay(message) {
+    // Remove existing overlay if any
+    this.hideProgressOverlay();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'github-progress-overlay';
+    overlay.className = 'progress-overlay';
+    overlay.innerHTML = `
+      <div class="progress-content">
+        <div class="progress-spinner"></div>
+        <div class="progress-message">${message}</div>
+        <div class="progress-steps">
+          <div class="step active">🔑 Authenticating</div>
+          <div class="step">📝 Creating Issue</div>
+          <div class="step">✅ Complete</div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    // Animate in
+    setTimeout(() => {
+      overlay.classList.add('show');
+    }, 10);
+  }
+
+  updateProgressMessage(message) {
+    const messageEl = document.querySelector('.progress-message');
+    if (messageEl) {
+      messageEl.textContent = message;
+    }
+
+    // Update step indicators
+    const steps = document.querySelectorAll('.progress-steps .step');
+    if (message.includes('Authenticating')) {
+      steps[0]?.classList.add('active');
+    } else if (message.includes('Creating issue')) {
+      steps[0]?.classList.add('complete');
+      steps[1]?.classList.add('active');
+    } else if (message.includes('successfully')) {
+      steps.forEach(step => step.classList.add('complete'));
+    }
+  }
+
+  hideProgressOverlay() {
+    const overlay = document.getElementById('github-progress-overlay');
+    if (overlay) {
+      overlay.classList.remove('show');
+      setTimeout(() => overlay.remove(), 300);
+    }
   }
 }
 
@@ -2535,6 +3455,319 @@ if (typeof document !== 'undefined') {
     color: var(--text-primary);
     max-height: 400px;
     overflow-y: auto;
+  }
+
+  /* AI Generated Header and Copy Button */
+  .ai-generated-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+    border: 1px solid rgba(102, 126, 234, 0.2);
+    border-radius: 8px;
+    margin-bottom: 16px;
+  }
+
+  .ai-generated-header h3 {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 1rem;
+    font-weight: 600;
+    flex: 1;
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .ai-badge {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .copy-btn {
+    padding: 6px 12px;
+    background: #48bb78;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+  }
+
+  .copy-btn:hover {
+    background: #38a169;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(72, 187, 120, 0.3);
+  }
+
+  /* Simple markdown text display */
+  #issue-content-text {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    line-height: 1.6;
+    color: var(--text-primary);
+    background: var(--bg-primary);
+    padding: 16px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    font-size: 0.9rem;
+  }
+
+  .markdown-text {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    line-height: 1.6;
+    color: var(--text-primary);
+    background: var(--bg-primary);
+    margin: 0;
+    padding: 0;
+    border: none;
+    white-space: pre-wrap;
+    font-size: 0.9rem;
+  }
+
+  /* GitHub Settings Dialog */
+  .github-settings-dialog {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .dialog-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+  }
+
+  .dialog-content {
+    position: relative;
+    background: var(--bg-secondary);
+    border-radius: 12px;
+    padding: 24px;
+    max-width: 500px;
+    width: 90%;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+  }
+
+  .dialog-content h3 {
+    margin-top: 0;
+    color: var(--text-primary);
+    font-size: 1.4rem;
+  }
+
+  .dialog-content p {
+    color: var(--text-secondary);
+    margin-bottom: 20px;
+  }
+
+  .form-group {
+    margin-bottom: 20px;
+  }
+
+  .form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+
+  .form-group input {
+    width: 100%;
+    padding: 10px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-size: 14px;
+  }
+
+  .form-group input:focus {
+    outline: none;
+    border-color: var(--accent-color);
+  }
+
+  .form-group small {
+    display: block;
+    margin-top: 4px;
+    color: var(--text-secondary);
+    font-size: 12px;
+  }
+
+  .form-group small a {
+    color: var(--accent-color);
+  }
+
+  .dialog-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 24px;
+  }
+
+  .dialog-actions button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-cancel {
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+  }
+
+  .btn-cancel:hover {
+    background: var(--bg-hover);
+  }
+
+  .btn-save {
+    background: var(--success-color);
+    color: white;
+  }
+
+  .btn-save:hover {
+    opacity: 0.9;
+  }
+
+  /* Toast Notifications */
+  .toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 12px 20px;
+    border-radius: 8px;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.3s;
+    z-index: 10001;
+    max-width: 400px;
+  }
+
+  .toast.show {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .toast-success {
+    background: var(--success-color);
+    color: white;
+  }
+
+  .toast-error {
+    background: var(--error-color);
+    color: white;
+  }
+
+  .toast-info {
+    background: var(--info-color);
+    color: white;
+  }
+
+  /* Progress Overlay */
+  .progress-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(5px);
+    z-index: 10002;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .progress-overlay.show {
+    opacity: 1;
+  }
+
+  .progress-content {
+    background: var(--bg-secondary);
+    border-radius: 16px;
+    padding: 32px;
+    text-align: center;
+    max-width: 400px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    border: 1px solid var(--border-color);
+  }
+
+  .progress-spinner {
+    width: 60px;
+    height: 60px;
+    margin: 0 auto 20px;
+    border: 3px solid var(--bg-tertiary);
+    border-top: 3px solid var(--accent-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  .progress-message {
+    color: var(--text-primary);
+    font-size: 1.2rem;
+    font-weight: 500;
+    margin-bottom: 24px;
+  }
+
+  .progress-steps {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .progress-steps .step {
+    flex: 1;
+    padding: 8px 12px;
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    opacity: 0.5;
+    transition: all 0.3s;
+  }
+
+  .progress-steps .step.active {
+    opacity: 1;
+    background: var(--info-color);
+    color: white;
+    transform: scale(1.05);
+  }
+
+  .progress-steps .step.complete {
+    opacity: 1;
+    background: var(--success-color);
+    color: white;
   }
 `;
   document.head.appendChild(style);

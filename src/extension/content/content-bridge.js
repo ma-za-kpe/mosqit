@@ -40,7 +40,68 @@
           console.log('[Mosqit Bridge] Successfully sent to background');
         }
       });
+    } else if (event.data && event.data.type === 'VISUAL_BUG_CAPTURED_FROM_MAIN') {
+      console.log('[Mosqit Bridge] Received visual bug capture from MAIN world, forwarding to background...');
+
+      // Forward to background script
+      chrome.runtime.sendMessage({
+        type: 'VISUAL_BUG_CAPTURED',
+        data: event.data.data
+      }, (response) => {
+        if (chrome.runtime.lastError) {
+          console.error('[Mosqit Bridge] Error sending bug capture to background:', chrome.runtime.lastError);
+        } else {
+          console.log('[Mosqit Bridge] Bug capture sent to background, response:', response);
+        }
+      });
+    } else if (event.data && event.data.type === 'REQUEST_SCREENSHOT_FROM_MAIN') {
+      console.log('[Mosqit Bridge] Received screenshot request from MAIN world, forwarding to background...');
+
+      // Forward screenshot request to background
+      chrome.runtime.sendMessage({
+        type: 'CAPTURE_ELEMENT_SCREENSHOT',
+        area: event.data.area
+      }, (response) => {
+        // Send screenshot back to MAIN world
+        window.postMessage({
+          type: 'SCREENSHOT_RESPONSE',
+          requestId: event.data.requestId,
+          screenshot: response?.screenshot || null
+        }, '*');
+
+        if (chrome.runtime.lastError) {
+          console.error('[Mosqit Bridge] Error getting screenshot:', chrome.runtime.lastError);
+        } else {
+          console.log('[Mosqit Bridge] Screenshot captured and sent back to MAIN world');
+        }
+      });
     }
+  });
+
+  // Listen for messages from the extension (background/popup/devtools)
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    console.log('[Mosqit Bridge] Received message from extension:', message.type);
+
+    // Forward Visual Bug Reporter commands to MAIN world
+    if (message.type === 'START_VISUAL_BUG_REPORT') {
+      console.log('[Mosqit Bridge] Forwarding START_VISUAL_BUG_REPORT to MAIN world');
+      window.postMessage({
+        type: 'START_VISUAL_BUG_REPORT',
+        source: 'mosqit-bridge'
+      }, '*');
+      sendResponse({ success: true, bridged: true });
+      return true;
+    } else if (message.type === 'STOP_VISUAL_BUG_REPORT') {
+      console.log('[Mosqit Bridge] Forwarding STOP_VISUAL_BUG_REPORT to MAIN world');
+      window.postMessage({
+        type: 'STOP_VISUAL_BUG_REPORT',
+        source: 'mosqit-bridge'
+      }, '*');
+      sendResponse({ success: true, bridged: true });
+      return true;
+    }
+
+    // Don't respond to other messages to avoid errors
   });
 
   // Notify MAIN world that bridge is ready

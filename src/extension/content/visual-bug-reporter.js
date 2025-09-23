@@ -1252,24 +1252,32 @@ class VisualBugReporter {
   }
 }
 
-// Check if Visual Bug Reporter is already initialized
-if (typeof window.mosqitVisualBugReporter === 'undefined') {
-  // Initialize Visual Bug Reporter
-  window.mosqitVisualBugReporter = new VisualBugReporter();
-  window.mosqitVisualBugReporter.init();
+// Check if we're in a browser environment (not in tests)
+if (typeof window !== 'undefined' && typeof document !== 'undefined' && typeof chrome !== 'undefined' && chrome.runtime) {
+  // Check if Visual Bug Reporter is already initialized
+  if (typeof window.mosqitVisualBugReporter === 'undefined') {
+    // Initialize Visual Bug Reporter
+    window.mosqitVisualBugReporter = new VisualBugReporter();
+    window.mosqitVisualBugReporter.init();
 
-  // Listen for messages from DevTools panel
-  chrome.runtime.onMessage.addListener((message) => {
-    if (message.type === 'OPEN_ANNOTATION_CANVAS' && message.screenshot) {
-      // Dynamically import and initialize annotation canvas
-      import('./annotation-canvas.js').then((module) => {
-        const canvas = new module.AnnotationCanvas(message.screenshot);
-        canvas.init();
-      }).catch((error) => {
-        console.error('[Mosqit] Failed to load annotation canvas:', error);
-      });
-    }
-  });
-} else {
-  // Visual Bug Reporter already initialized
+    // Listen for messages from DevTools panel
+    chrome.runtime.onMessage.addListener((message) => {
+      if (message.type === 'OPEN_ANNOTATION_CANVAS' && message.screenshot) {
+        // Dynamically import and initialize annotation canvas
+        import('./annotation-canvas.js').then((module) => {
+          const canvas = new module.AnnotationCanvas(message.screenshot);
+          canvas.init();
+        }).catch((error) => {
+          console.error('[Mosqit] Failed to load annotation canvas:', error);
+        });
+      }
+    });
+  } else {
+    // Visual Bug Reporter already initialized
+  }
+}
+
+// Export for testing
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = VisualBugReporter;
 }

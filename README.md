@@ -150,6 +150,77 @@ const storage = new MosqitStorage({
 - npm 9+
 - **Chrome AI flags enabled** (see setup below)
 
+## 📦 Installation & Setup
+
+**Duration**: 3 min
+**Level**: Beginner
+
+### Chrome Extension Installation
+
+#### Prerequisites
+- Chrome/Edge browser version 120 or higher
+- Developer mode enabled in browser extensions
+- Node.js 18+ for local development (optional)
+
+#### Installation Methods
+
+##### Method 1: Load from Source (Recommended for Development)
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/ma-za-kpe/mosqit.git
+   cd mosqit
+   ```
+
+2. **Install dependencies** (if developing):
+   ```bash
+   npm install
+   npm run build
+   ```
+
+3. **Load in Chrome**:
+   - Open `chrome://extensions/`
+   - Enable "Developer mode" (toggle in top-right)
+   - Click "Load unpacked"
+   - Select the `dist/extension` folder
+
+##### Method 2: Chrome Web Store (Coming Soon)
+- Extension will be available on Chrome Web Store after review process
+- Direct installation with automatic updates
+
+#### Required Permissions
+When installing, Mosqit requests these permissions:
+- **Storage**: Save logs and settings locally
+- **Active Tab**: Inject debugging scripts
+- **DevTools**: Access developer tools panel
+- **All URLs**: Monitor console across all websites
+
+#### Post-Installation Setup
+
+1. **Verify Installation**:
+   - Look for Mosqit icon in Chrome toolbar
+   - Check that "Mosqit" appears in DevTools panels (F12)
+
+2. **Enable Chrome AI Features** (Optional but Recommended):
+   - Follow the [Chrome AI Setup](#-chrome-ai-setup) section below
+   - Required for AI-powered error analysis
+
+3. **Test the Extension**:
+   - Open any website
+   - Open DevTools (F12) → "Mosqit" tab
+   - Generate a test error in the console: `throw new Error("Test error")`
+   - Verify error appears in Mosqit panel
+
+#### Troubleshooting Installation
+- **Extension not loading**: Ensure you selected the `dist/extension` folder, not the root project folder
+- **Missing DevTools panel**: Refresh the page and reopen DevTools
+- **Permissions errors**: Make sure Developer mode is enabled
+- **Build issues**: Run `npm run build` if using source installation
+
+#### Configuration Options
+- Access settings via the extension popup (click Mosqit icon)
+- Configure log retention, AI features, and export preferences
+- GitHub integration setup for automated issue creation
+
 ## 🔧 Chrome AI Setup
 
 ### Step 1: Enable Chrome AI Flags

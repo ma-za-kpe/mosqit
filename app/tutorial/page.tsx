@@ -145,63 +145,206 @@ export default function Tutorial() {
     return (
       <div className="content-section">
         <div className="card highlight-card">
-          <h3>Two Ways to Install</h3>
+          <div className="duration-level">
+            <span className="duration">⏱️ Duration: 3 min</span>
+            <span className="level">📝 Level: Beginner</span>
+          </div>
+
+          <h3>Chrome Extension Installation</h3>
 
           <div className="install-grid">
             <div className="install-option recommended">
-              <div className="badge">Recommended</div>
-              <h4>🏪 Chrome Web Store</h4>
-              <p>One-click installation with automatic updates</p>
-              <button className="btn btn-primary">Install from Chrome Store →</button>
-              <small className="muted">Coming soon - pending review</small>
+              <div className="badge">Method 1: Recommended</div>
+              <h4>🔧 Load from Source</h4>
+              <p>Load unpacked extension for development</p>
+              <div className="install-steps">
+                <div className="step-item">
+                  <span className="step-num">1</span>
+                  <span>Clone the repository</span>
+                </div>
+                <div className="code-block">
+                  <pre>
+{`git clone https://github.com/ma-za-kpe/mosqit.git
+cd mosqit`}
+                  </pre>
+                  <button
+                    className="copy-btn"
+                    onClick={() => onCopy('git clone https://github.com/ma-za-kpe/mosqit.git\ncd mosqit')}
+                  >
+                    📋
+                  </button>
+                </div>
+
+                <div className="step-item">
+                  <span className="step-num">2</span>
+                  <span>Install dependencies (if developing)</span>
+                </div>
+                <div className="code-block">
+                  <pre>
+{`npm install
+npm run build`}
+                  </pre>
+                  <button
+                    className="copy-btn"
+                    onClick={() => onCopy('npm install\nnpm run build')}
+                  >
+                    📋
+                  </button>
+                </div>
+
+                <div className="step-item">
+                  <span className="step-num">3</span>
+                  <span>Load in Chrome</span>
+                </div>
+                <ul className="load-steps">
+                  <li>Open <code className="inline-code">chrome://extensions/</code></li>
+                  <li>Enable &ldquo;Developer mode&rdquo; (toggle in top-right)</li>
+                  <li>Click &ldquo;Load unpacked&rdquo;</li>
+                  <li>Select the <code className="inline-code">dist/extension</code> folder</li>
+                </ul>
+              </div>
             </div>
 
             <div className="install-option">
-              <h4>👨‍💻 Developer Mode</h4>
-              <p>Build from source for development</p>
-              <div className="code-block">
-                <pre>
-{`git clone https://github.com/ma-za-kpe/mosqit.git
-cd mosqit && npm install
-npm run build:extension`}
-                </pre>
-                <button
-                  className="copy-btn"
-                  onClick={() => onCopy('git clone https://github.com/ma-za-kpe/mosqit.git\ncd mosqit && npm install\nnpm run build:extension')}
-                >
-                  📋
-                </button>
+              <div className="badge">Method 2: Coming Soon</div>
+              <h4>🏪 Chrome Web Store</h4>
+              <p>Extension will be available on Chrome Web Store after review process</p>
+              <div className="coming-soon">
+                <span>Direct installation with automatic updates</span>
+                <button className="btn btn-secondary" disabled>Install from Chrome Store →</button>
               </div>
-              <p>Then load <code className="inline-code">dist/extension</code> in Chrome Extensions</p>
             </div>
           </div>
         </div>
 
         <div className="requirements">
-          <h3>Requirements</h3>
+          <h3>Prerequisites</h3>
           <div className="req-grid">
             <div className="req-card">
               <span className="icon">🌐</span>
               <div>
-                <strong>Chrome 120+</strong>
-                <small>or Edge/Brave</small>
+                <strong>Chrome/Edge 120+</strong>
+                <small>browser version</small>
               </div>
             </div>
             <div className="req-card">
               <span className="icon">⚙️</span>
               <div>
                 <strong>Developer Mode</strong>
-                <small>for manual install</small>
+                <small>enabled in extensions</small>
               </div>
             </div>
             <div className="req-card">
-              <span className="icon">💾</span>
+              <span className="icon">🛠️</span>
               <div>
-                <strong>~10MB</strong>
-                <small>disk space</small>
+                <strong>Node.js 18+</strong>
+                <small>for local development (optional)</small>
               </div>
             </div>
           </div>
+        </div>
+
+        <div className="permissions-section">
+          <h3>Required Permissions</h3>
+          <p>When installing, Mosqit requests these permissions:</p>
+          <div className="permissions-grid">
+            <div className="permission-item">
+              <span className="permission-icon">💾</span>
+              <div>
+                <strong>Storage</strong>
+                <small>Save logs and settings locally</small>
+              </div>
+            </div>
+            <div className="permission-item">
+              <span className="permission-icon">🏃</span>
+              <div>
+                <strong>Active Tab</strong>
+                <small>Inject debugging scripts</small>
+              </div>
+            </div>
+            <div className="permission-item">
+              <span className="permission-icon">🔧</span>
+              <div>
+                <strong>DevTools</strong>
+                <small>Access developer tools panel</small>
+              </div>
+            </div>
+            <div className="permission-item">
+              <span className="permission-icon">🌐</span>
+              <div>
+                <strong>All URLs</strong>
+                <small>Monitor console across all websites</small>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="setup-section">
+          <h3>Post-Installation Setup</h3>
+          <div className="setup-steps">
+            <div className="setup-step">
+              <div className="setup-number">1</div>
+              <div className="setup-content">
+                <h4>Verify Installation</h4>
+                <ul>
+                  <li>Look for Mosqit icon in Chrome toolbar</li>
+                  <li>Check that &ldquo;Mosqit&rdquo; appears in DevTools panels (F12)</li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="setup-step">
+              <div className="setup-number">2</div>
+              <div className="setup-content">
+                <h4>Enable Chrome AI Features (Optional but Recommended)</h4>
+                <p>Follow the Chrome AI Setup section for AI-powered error analysis</p>
+              </div>
+            </div>
+
+            <div className="setup-step">
+              <div className="setup-number">3</div>
+              <div className="setup-content">
+                <h4>Test the Extension</h4>
+                <ul>
+                  <li>Open any website</li>
+                  <li>Open DevTools (F12) → &ldquo;Mosqit&rdquo; tab</li>
+                  <li>Generate a test error: <code className="inline-code">throw new Error(&ldquo;Test error&rdquo;)</code></li>
+                  <li>Verify error appears in Mosqit panel</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="troubleshooting-section">
+          <h3>Troubleshooting Installation</h3>
+          <div className="trouble-grid">
+            <div className="trouble-item">
+              <strong>Extension not loading</strong>
+              <small>Ensure you selected the <code className="inline-code">dist/extension</code> folder, not the root project folder</small>
+            </div>
+            <div className="trouble-item">
+              <strong>Missing DevTools panel</strong>
+              <small>Refresh the page and reopen DevTools</small>
+            </div>
+            <div className="trouble-item">
+              <strong>Permissions errors</strong>
+              <small>Make sure Developer mode is enabled</small>
+            </div>
+            <div className="trouble-item">
+              <strong>Build issues</strong>
+              <small>Run <code className="inline-code">npm run build</code> if using source installation</small>
+            </div>
+          </div>
+        </div>
+
+        <div className="config-section">
+          <h3>Configuration Options</h3>
+          <ul className="config-list">
+            <li>Access settings via the extension popup (click Mosqit icon)</li>
+            <li>Configure log retention, AI features, and export preferences</li>
+            <li>GitHub integration setup for automated issue creation</li>
+          </ul>
         </div>
       </div>
     );
@@ -536,6 +679,24 @@ Context:
   }
 
   function VisualCaptureContent() {
+    const handleVisualCapture = () => {
+      // Check if the extension is installed
+      if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+        // Send message to extension to start visual bug reporter
+        chrome.runtime.sendMessage('YOUR_EXTENSION_ID', {
+          type: 'START_VISUAL_BUG_REPORT'
+        }, () => {
+          if (chrome.runtime.lastError) {
+            alert('Please make sure the Mosqit extension is installed and enabled!\n\nTo activate Visual Capture Mode:\n1. Open DevTools (F12)\n2. Go to the Mosqit panel\n3. Click the Visual Bug Reporter button');
+          } else {
+            console.log('Visual Bug Reporter activated!');
+          }
+        });
+      } else {
+        alert('To use Visual Capture Mode:\n\n1. Install the Mosqit extension first\n2. Open DevTools (F12)\n3. Go to the Mosqit panel\n4. Click the Visual Bug Reporter button\n\nThe Visual Bug Reporter will then activate on any webpage!');
+      }
+    };
+
     return (
       <div className="content-section">
         <h3>Report Bugs Without Code</h3>
@@ -604,7 +765,9 @@ Context:
         </div>
 
         <div className="card demo-card">
-          <button className="btn btn-primary">Try Visual Capture Mode</button>
+          <button className="btn btn-primary" onClick={handleVisualCapture}>
+            Try Visual Capture Mode
+          </button>
           <p>Activates on any webpage - try it on your own site!</p>
         </div>
       </div>
@@ -888,15 +1051,59 @@ const [products, setProducts] = useState([]);
               <li>Personal access tokens → Tokens (classic)</li>
               <li>Generate new token with <code className="inline-code">repo</code> scope</li>
             </ol>
-            <button className="btn btn-secondary">Open GitHub Settings →</button>
+            <button
+              className="btn btn-secondary"
+              onClick={() => window.open('https://github.com/settings/tokens/new?scopes=repo', '_blank')}
+            >
+              Open GitHub Settings →
+            </button>
           </div>
 
           <div className="flow-step">
             <h4>2. Configure in Mosqit</h4>
             <div className="config-form">
-              <input type="password" placeholder="GitHub Token" className="input-field" />
-              <input type="text" placeholder="owner/repository" className="input-field" />
-              <button className="btn btn-primary">Save Configuration</button>
+              <input
+                type="password"
+                placeholder="GitHub Token"
+                className="input-field"
+                id="github-token-input"
+              />
+              <input
+                type="text"
+                placeholder="owner/repository"
+                className="input-field"
+                id="github-repo-input"
+              />
+              <button
+                className="btn btn-primary"
+                onClick={() => {
+                  const tokenInput = document.getElementById('github-token-input') as HTMLInputElement;
+                  const repoInput = document.getElementById('github-repo-input') as HTMLInputElement;
+                  const token = tokenInput?.value;
+                  const repo = repoInput?.value;
+
+                  if (!token || !repo) {
+                    alert('Please enter both GitHub token and repository (owner/repo format)');
+                    return;
+                  }
+
+                  // Check if extension is available
+                  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.sync) {
+                    chrome.storage.sync.set({
+                      githubToken: token,
+                      githubRepo: repo
+                    }, () => {
+                      alert('✅ GitHub configuration saved!\n\nYou can now create issues directly from the Mosqit DevTools panel.');
+                      tokenInput.value = '';
+                      repoInput.value = '';
+                    });
+                  } else {
+                    alert('To configure GitHub integration:\n\n1. Install the Mosqit extension first\n2. Open DevTools (F12)\n3. Go to the Mosqit panel\n4. Configure GitHub settings there\n\nNote: You need a GitHub personal access token with "repo" permissions.');
+                  }
+                }}
+              >
+                Save Configuration
+              </button>
             </div>
           </div>
 
@@ -1193,25 +1400,42 @@ const [products, setProducts] = useState([]);
         /* Global Styles */
         .tutorial-container {
           min-height: 100vh;
-          background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+          background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
           color: #e0e0e0;
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          position: relative;
+          overflow-x: hidden;
+        }
+
+        .tutorial-container::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background:
+            radial-gradient(circle at 20% 50%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+            radial-gradient(circle at 80% 80%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
+            radial-gradient(circle at 40% 20%, rgba(120, 219, 255, 0.2) 0%, transparent 50%);
+          pointer-events: none;
         }
 
         /* Header */
         .header {
-          background: rgba(0, 0, 0, 0.8);
-          backdrop-filter: blur(20px);
+          background: rgba(15, 12, 41, 0.8);
+          backdrop-filter: blur(20px) saturate(180%);
           border-bottom: 1px solid rgba(255, 255, 255, 0.1);
           position: sticky;
           top: 0;
           z-index: 100;
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
         }
 
         .header-content {
-          max-width: 1400px;
+          max-width: 1200px;
           margin: 0 auto;
-          padding: 1rem 2rem;
+          padding: 20px;
         }
 
         .header-top {
@@ -1461,10 +1685,46 @@ const [products, setProducts] = useState([]);
 
         /* Content Area */
         .content-area {
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 12px;
-          overflow: hidden;
+          background: linear-gradient(135deg,
+            rgba(255, 255, 255, 0.08) 0%,
+            rgba(255, 255, 255, 0.03) 100%);
+          backdrop-filter: blur(10px) saturate(180%);
+          border: 1px solid rgba(255, 255, 255, 0.15);
+          border-radius: 24px;
+          overflow-y: auto;
+          overflow-x: hidden;
+          max-height: calc(100vh - 160px);
+          box-shadow:
+            0 20px 60px rgba(0, 0, 0, 0.3),
+            inset 0 1px 0 rgba(255, 255, 255, 0.1);
+          position: relative;
+          scrollbar-width: thin;
+          scrollbar-color: rgba(167, 139, 250, 0.3) transparent;
+        }
+
+        .content-area::-webkit-scrollbar {
+          width: 10px;
+        }
+
+        .content-area::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 10px;
+        }
+
+        .content-area::-webkit-scrollbar-thumb {
+          background: linear-gradient(180deg,
+            rgba(102, 126, 234, 0.5),
+            rgba(167, 139, 250, 0.5));
+          border-radius: 10px;
+          border: 2px solid transparent;
+          background-clip: padding-box;
+        }
+
+        .content-area::-webkit-scrollbar-thumb:hover {
+          background: linear-gradient(180deg,
+            rgba(102, 126, 234, 0.7),
+            rgba(167, 139, 250, 0.7));
+          background-clip: padding-box;
         }
 
         .content-header {
@@ -1554,63 +1814,156 @@ const [products, setProducts] = useState([]);
 
         /* Content Section Styles */
         .content-section {
-          color: #d0d0d0;
+          color: #e0e0e0;
+          background: rgba(255, 255, 255, 0.05);
+          backdrop-filter: blur(10px) saturate(180%);
+          border-radius: 24px;
+          padding: 48px;
+          margin-bottom: 32px;
+          box-shadow:
+            0 20px 60px rgba(0, 0, 0, 0.3),
+            inset 0 0 20px rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          position: relative;
+          overflow: hidden;
+          transition: all 0.3s ease;
+        }
+
+        .content-section:hover {
+          transform: translateY(-4px);
+          box-shadow:
+            0 30px 80px rgba(0, 0, 0, 0.4),
+            inset 0 0 30px rgba(255, 255, 255, 0.08);
+          border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .content-section::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 1px;
+          background: linear-gradient(90deg,
+            transparent 0%,
+            rgba(255, 255, 255, 0.4) 50%,
+            transparent 100%);
         }
 
         .content-section h3 {
-          font-size: 1.3rem;
-          color: white;
-          margin: 1.5rem 0 1rem;
-          font-weight: 600;
+          font-size: 1.8rem;
+          background: linear-gradient(135deg, #667eea 0%, #a78bfa 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          margin: 2rem 0 1.2rem;
+          font-weight: 700;
+          letter-spacing: -0.02em;
         }
 
         .content-section h4 {
-          font-size: 1.1rem;
-          color: #ff6b6b;
-          margin: 1.5rem 0 0.75rem;
+          font-size: 1.3rem;
+          color: #fff;
+          margin: 1.8rem 0 1rem;
           font-weight: 600;
+          opacity: 0.95;
         }
 
         .content-section h5 {
-          font-size: 1rem;
-          color: #60a5fa;
-          margin: 1rem 0 0.5rem;
+          font-size: 1.1rem;
+          color: #a78bfa;
+          margin: 1.2rem 0 0.6rem;
           font-weight: 600;
         }
 
         .content-section p {
-          line-height: 1.7;
-          margin: 0.75rem 0;
+          line-height: 1.8;
+          margin: 0.9rem 0;
+          color: #b8b8b8;
+          font-size: 1.05rem;
         }
 
         .content-section ul, .content-section ol {
-          margin: 1rem 0;
-          padding-left: 1.5rem;
+          margin: 1.2rem 0;
+          padding-left: 1.8rem;
         }
 
         .content-section li {
-          margin: 0.5rem 0;
-          line-height: 1.6;
+          margin: 0.6rem 0;
+          line-height: 1.7;
+          color: #b8b8b8;
+          font-size: 1.02rem;
         }
 
         .content-section strong {
-          color: white;
+          color: #fff;
           font-weight: 600;
+          text-shadow: 0 0 20px rgba(167, 139, 250, 0.5);
         }
 
         /* Cards and Boxes */
         .card {
-          background: rgba(0, 0, 0, 0.3);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 12px;
-          padding: 1.5rem;
-          margin: 1.5rem 0;
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+          backdrop-filter: blur(10px);
+          border: 1px solid rgba(255, 255, 255, 0.18);
+          border-radius: 24px;
+          padding: 48px;
+          margin: 32px 0;
+          box-shadow:
+            0 8px 32px rgba(31, 38, 135, 0.37),
+            inset 0 0 20px rgba(255, 255, 255, 0.05);
+          position: relative;
+          overflow: hidden;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .card:hover {
+          transform: translateY(-8px) scale(1.01);
+          box-shadow:
+            0 12px 48px rgba(31, 38, 135, 0.5),
+            inset 0 0 30px rgba(255, 255, 255, 0.08);
+          border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .card::after {
+          content: '';
+          position: absolute;
+          top: -50%;
+          left: -50%;
+          width: 200%;
+          height: 200%;
+          background: linear-gradient(45deg,
+            transparent 30%,
+            rgba(255, 255, 255, 0.05) 50%,
+            transparent 70%);
+          transform: rotate(45deg);
+          transition: all 0.5s;
+          opacity: 0;
+        }
+
+        .card:hover::after {
+          animation: shimmer 0.5s ease;
+        }
+
+        @keyframes shimmer {
+          0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); opacity: 0; }
+          50% { opacity: 1; }
+          100% { transform: translateX(100%) translateY(100%) rotate(45deg); opacity: 0; }
         }
 
         .highlight-card {
           background: linear-gradient(135deg,
-            rgba(255, 107, 107, 0.05),
-            rgba(0, 0, 0, 0.3));
+            rgba(102, 126, 234, 0.15) 0%,
+            rgba(167, 139, 250, 0.1) 50%,
+            rgba(255, 119, 198, 0.08) 100%);
+          border: 2px solid rgba(167, 139, 250, 0.3);
+        }
+
+        .highlight-card:hover {
+          border-color: rgba(167, 139, 250, 0.6);
+          background: linear-gradient(135deg,
+            rgba(102, 126, 234, 0.2) 0%,
+            rgba(167, 139, 250, 0.15) 50%,
+            rgba(255, 119, 198, 0.12) 100%);
         }
 
         .demo-card {
@@ -2272,6 +2625,31 @@ const [products, setProducts] = useState([]);
           position: sticky;
           top: 120px;
           height: fit-content;
+          max-height: calc(100vh - 140px);
+          overflow-y: auto;
+          scrollbar-width: thin;
+          scrollbar-color: rgba(167, 139, 250, 0.3) transparent;
+          animation: slideInRight 0.6s ease;
+        }
+
+        @keyframes slideInRight {
+          from {
+            opacity: 0;
+            transform: translateX(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+
+        .right-sidebar::-webkit-scrollbar {
+          width: 6px;
+        }
+
+        .right-sidebar::-webkit-scrollbar-thumb {
+          background: rgba(167, 139, 250, 0.3);
+          border-radius: 3px;
         }
 
         .toc-section {
@@ -2659,6 +3037,196 @@ const [products, setProducts] = useState([]);
             font-size: 20px;
             bottom: 15px;
             right: 15px;
+          }
+
+          /* Installation Section Styles */
+          .duration-level {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+          }
+
+          .duration, .level {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+          }
+
+          .install-steps {
+            margin: 30px 0;
+          }
+
+          .step-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin: 20px 0;
+            font-weight: 600;
+            color: #2d3748;
+          }
+
+          .step-num {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.95rem;
+            box-shadow:
+              0 4px 15px rgba(102, 126, 234, 0.4),
+              0 0 30px rgba(167, 139, 250, 0.2),
+              inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            position: relative;
+            transition: all 0.3s ease;
+          }
+
+          .step-item:hover .step-num {
+            transform: scale(1.15) rotate(360deg);
+            box-shadow:
+              0 6px 20px rgba(102, 126, 234, 0.5),
+              0 0 40px rgba(167, 139, 250, 0.3);
+          }
+
+          .load-steps {
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 12px;
+            margin: 15px 0;
+            border-left: 4px solid #667eea;
+          }
+
+          .load-steps li {
+            margin: 8px 0;
+            color: #4a5568;
+          }
+
+          .coming-soon {
+            text-align: center;
+            opacity: 0.7;
+          }
+
+          .permissions-section, .setup-section, .troubleshooting-section, .config-section {
+            margin: 40px 0;
+          }
+
+          .permissions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+          }
+
+          .permission-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px;
+            background: #f8fafc;
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+          }
+
+          .permission-icon {
+            font-size: 1.5rem;
+          }
+
+          .setup-steps {
+            margin: 30px 0;
+          }
+
+          .setup-step {
+            display: flex;
+            gap: 20px;
+            margin: 30px 0;
+            padding: 20px;
+            background: #f8fafc;
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+          }
+
+          .setup-number {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.1rem;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+            flex-shrink: 0;
+          }
+
+          .setup-content {
+            flex: 1;
+          }
+
+          .setup-content h4 {
+            margin: 0 0 10px 0;
+            color: #2d3748;
+            font-size: 1.1rem;
+          }
+
+          .setup-content ul {
+            margin: 10px 0;
+            padding-left: 20px;
+          }
+
+          .setup-content li {
+            margin: 5px 0;
+            color: #4a5568;
+          }
+
+          .trouble-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+          }
+
+          .trouble-item {
+            padding: 20px;
+            background: #fff5f5;
+            border-radius: 12px;
+            border-left: 4px solid #ff6b6b;
+          }
+
+          .trouble-item strong {
+            color: #2d3748;
+            display: block;
+            margin-bottom: 8px;
+            font-size: 1rem;
+          }
+
+          .trouble-item small {
+            color: #4a5568;
+            line-height: 1.5;
+          }
+
+          .config-list {
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+            margin: 20px 0;
+          }
+
+          .config-list li {
+            margin: 10px 0;
+            color: #4a5568;
           }
         }
       `}</style>

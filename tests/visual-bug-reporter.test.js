@@ -114,28 +114,47 @@ describe('Visual Bug Reporter', () => {
     });
 
     test('should register message listener', async () => {
+      // Mock window.addEventListener
+      const addEventListenerSpy = jest.spyOn(window, 'addEventListener');
+
       await reporter.init();
-      expect(chrome.runtime.onMessage.addListener).toHaveBeenCalled();
+
+      // Should register for window message events, not chrome runtime messages
+      expect(addEventListenerSpy).toHaveBeenCalledWith('message', expect.any(Function));
+
+      addEventListenerSpy.mockRestore();
     });
   });
 
   describe('Activation', () => {
     test('should start visual bug reporting mode', () => {
+      // Spy on document.addEventListener since it's not a Jest mock in our setup
+      const addEventListenerSpy = jest.spyOn(mockDocument, 'addEventListener');
+
       reporter.start();
 
       expect(reporter.isActive).toBe(true);
       expect(reporter.mode).toBe('select');
       expect(document.body.style.cursor).toBe('crosshair');
-      expect(document.addEventListener).toHaveBeenCalledWith('mousemove', expect.any(Function));
-      expect(document.addEventListener).toHaveBeenCalledWith('click', expect.any(Function));
-      expect(document.addEventListener).toHaveBeenCalledWith('keydown', expect.any(Function));
+      expect(addEventListenerSpy).toHaveBeenCalledWith('mousemove', expect.any(Function));
+      expect(addEventListenerSpy).toHaveBeenCalledWith('click', expect.any(Function));
+      expect(addEventListenerSpy).toHaveBeenCalledWith('keydown', expect.any(Function));
+
+      addEventListenerSpy.mockRestore();
     });
 
     test('should create UI overlays', () => {
+      // Spy on document.createElement since it's not a Jest mock in our setup
+      const createElementSpy = jest.spyOn(mockDocument, 'createElement');
+      const appendChildSpy = jest.spyOn(mockDocument.body, 'appendChild');
+
       reporter.start();
 
-      expect(document.createElement).toHaveBeenCalledWith('div');
-      expect(document.body.appendChild).toHaveBeenCalled();
+      expect(createElementSpy).toHaveBeenCalledWith('div');
+      expect(appendChildSpy).toHaveBeenCalled();
+
+      createElementSpy.mockRestore();
+      appendChildSpy.mockRestore();
     });
 
     test('should not start if already active', () => {

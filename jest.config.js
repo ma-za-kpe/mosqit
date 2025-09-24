@@ -79,11 +79,11 @@ module.exports = {
   // Verbose output
   verbose: true,
 
-  // Max workers for parallel testing
-  maxWorkers: '50%',
+  // Max workers for parallel testing - reduced to prevent memory issues
+  maxWorkers: 2,
 
-  // Test timeout
-  testTimeout: 10000,
+  // Test timeout - increased for debugging
+  testTimeout: 30000,
 
   // Clear mocks automatically
   clearMocks: true,

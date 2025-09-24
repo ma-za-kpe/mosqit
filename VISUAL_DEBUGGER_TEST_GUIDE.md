@@ -1,7 +1,33 @@
 # Visual Bug Reporter Testing Guide
 
+> **Last Updated**: December 2024
+> **Implementation Status**: Core features working, some advanced features pending
+
 ## Overview
-The enhanced Visual Bug Reporter now includes Chrome DevTools-like features for advanced debugging.
+The Visual Bug Reporter provides intelligent element selection, screenshot capture, and AI-powered GitHub issue generation. This guide covers the **actually implemented features** and notes which features are still in development.
+
+## Implementation Status Summary
+
+### ✅ Fully Working Features
+- Smart element selection with scoring algorithm
+- Screenshot capture with clean UI hiding
+- GitHub issue generation with AI
+- Basic keyboard navigation (arrows, Tab, Enter, Escape)
+- Box model visualization (padding/margin overlays)
+- Framework detection (React, Vue, Angular)
+- Accessibility analysis (contrast checking)
+
+### ⚠️ Partially Working
+- Multi-element selection (Ctrl+Click) - infrastructure exists
+- Performance metrics collection - data collected but no overlay
+
+### ❌ Not Yet Implemented
+- Annotation tools (drawing on screenshots)
+- CSS live editor
+- Color picker mode
+- Measurement tool
+- Advanced keyboard shortcuts (P, E, I, C, S keys)
+- Persistent tooltip mode toggle
 
 ## Setup
 1. Build the extension: `npm run build:extension`
@@ -24,104 +50,101 @@ The enhanced Visual Bug Reporter now includes Chrome DevTools-like features for 
 1. Click Mosqit extension icon in toolbar
 2. Click "Open Dashboard" or use from popup
 
-## Testing the 10 New Features
+## Testing WORKING Features
 
-### 1. Enhanced Tooltip with Accessibility Info
+### 1. Smart Element Selection ✅
 **Test:**
-- Hover over any element
-- Tooltip should show:
-  - Element tag and classes
-  - ARIA roles and properties
-  - Color contrast ratio (for text)
-  - Computed styles
+- Hover over any element on the page
+- The Visual Bug Reporter intelligently selects meaningful components
+- Notice how it prefers buttons, links, and semantic elements over generic divs
 
-**Expected:** Detailed tooltip with accessibility metrics
+**Expected:**
+- Red border highlights the best element based on scoring algorithm
+- Info panel shows element details (selector, size, position, colors)
 
-### 2. Persistent Tooltip Mode (Ctrl+Alt)
+### 2. Box Model Visualization ✅
 **Test:**
-- Press `Ctrl+Alt` to toggle persistent mode
-- Move mouse around
-- Tooltip should stay visible for last hovered element
+- Hover over elements with padding/margin
+- Look for colored overlays:
+  - Red: Element border
+  - Green: Padding area
+  - Orange: Margin area
 
-**Expected:** Tooltip remains visible until toggled off
+**Expected:** Chrome DevTools-like box model visualization
 
-### 3. Keyboard Navigation for DOM Traversal
+### 3. Screenshot Capture ✅
+**Test:**
+- Click on an element to capture it
+- UI elements automatically hide before capture
+- Screenshot is taken cleanly without overlays
+
+**Expected:** Clean screenshot capture with success toast message
+
+### 4. Basic Keyboard Navigation ✅
 **Test:**
 - Click on an element to select it
-- Use keyboard shortcuts:
-  - `Arrow Up`: Navigate to parent
-  - `Arrow Down`: Navigate to first child
-  - `Arrow Left/Right`: Navigate between siblings
-  - `Tab`: Next element in tab order
-  - `Enter`: Inspect element
-  - `Escape`: Exit selection
+- Use working keyboard shortcuts:
+  - `Arrow Keys`: Navigate between siblings and parent/child
+  - `Tab`: Navigate to next focusable element
+  - `Enter`: Select the hovered element
+  - `Escape`: Exit Visual Bug Reporter
 
-**Expected:** Blue highlight moves between elements
+**Expected:** Element selection moves with keyboard navigation
 
-### 4. Multi-element Selection (Ctrl+Click)
+### 5. GitHub Issue Generation with AI ✅
 **Test:**
-- Hold `Ctrl` and click multiple elements
-- Selected elements should be highlighted in orange
-- Right-click for "Select all similar" option
+- Capture an element
+- Fill in the bug description form
+- Click "Generate Issue"
+- If Chrome AI is enabled: AI generates title and enhanced description
+- If not: Smart fallback generates appropriate title
 
-**Expected:** Multiple elements selected simultaneously
+**Expected:** Professional GitHub issue with all context
 
-### 5. Performance Metrics Overlay
+### 6. Framework Detection ✅
 **Test:**
-- Press `P` key to toggle performance overlay
-- Should show in top-right corner:
-  - Memory usage
-  - Paint timings
-  - Layout shifts
-  - FPS counter
+- Use on React, Vue, or Angular sites
+- Check captured element data
+- Framework-specific data is captured (React props, Vue data, etc.)
 
-**Expected:** Real-time performance metrics display
+**Expected:** Console shows detected framework and relevant data
 
-### 6. CSS Editor Integration
+### 7. Accessibility Analysis ✅
 **Test:**
-- Select an element
-- Press `E` key to open CSS editor
-- Modify styles in the editor
-- Changes apply in real-time
+- Select text elements
+- Check the info panel for:
+  - Color contrast ratios
+  - ARIA properties
+  - Role information
 
-**Expected:** Live CSS editing panel appears
+**Expected:** WCAG compliance information displayed
 
-### 7. Smart Context Detection
-**Test various scenarios:**
-- Hover over form with validation errors
-- Hover over broken images
-- Hover over elements with console errors
+## Features NOT YET Working (Documented but TODO)
 
-**Expected:** Context-aware information in tooltip
+### ❌ Persistent Tooltip Mode (Ctrl+Alt)
+**Status:** Code infrastructure exists but not activated
+**Current:** Tooltip disappears on mouse move
 
-### 8. Enhanced Info Panel with Tabs
-**Test:**
-- Select an element and press `I` key
-- Info panel should have tabs:
-  - Styles: All CSS properties
-  - Accessibility: ARIA tree
-  - Performance: Render metrics
-  - Context: Related errors/warnings
+### ❌ Advanced Keyboard Shortcuts
+**Status:** NOT IMPLEMENTED
+- `P` for performance overlay
+- `E` for CSS editor
+- `I` for info panel tabs
+- `C` for copy element data
+- `S` for screenshot element
 
-**Expected:** Tabbed panel with comprehensive info
+### ❌ Annotation Tools
+**Status:** TODO placeholders in code
+- No drawing tools
+- No arrow/circle/text annotations
+- No color picker
+- No measurement tool
 
-### 9. Grid/Flexbox Detection
-**Test:**
-- Hover over grid or flexbox containers
-- Should show:
-  - Grid template columns/rows
-  - Flex direction and properties
-  - Visual overlay of grid lines
+### ❌ CSS Live Editor
+**Status:** Infrastructure partially exists, not functional
 
-**Expected:** Layout type detection with visual guides
-
-### 10. Breadcrumb Navigation
-**Test:**
-- Select a deeply nested element
-- Breadcrumb bar shows DOM path
-- Click breadcrumb items to navigate
-
-**Expected:** Clickable breadcrumb trail at top of page
+### ❌ Performance Overlay Display
+**Status:** Metrics are collected but not displayed visually
 
 ## Testing AI Analysis
 
@@ -199,44 +222,74 @@ The enhanced Visual Bug Reporter now includes Chrome DevTools-like features for 
 
 ## Validation Checklist
 
-- [ ] Tooltip shows on hover
+### Working Features ✅
+- [x] Element info shows on hover
+- [x] Smart element selection with scoring
+- [x] Box model visualization (padding/margin)
+- [x] Arrow keys navigate DOM (basic navigation)
+- [x] Escape key exits selection
+- [x] Screenshot capture works
+- [x] GitHub issue generation works
+- [x] AI analysis provides detailed errors (if enabled)
+- [x] Pattern analysis works as fallback
+- [x] Framework detection works
+- [x] Accessibility info displayed
+
+### Not Yet Implemented ❌
 - [ ] Ctrl+Alt toggles persistent mode
-- [ ] Arrow keys navigate DOM
-- [ ] Ctrl+Click selects multiple
+- [ ] Ctrl+Click selects multiple (partial)
 - [ ] P key shows performance overlay
 - [ ] E key opens CSS editor
-- [ ] Context detection works
-- [ ] Info panel has 4 tabs
-- [ ] Grid/Flex detection works
-- [ ] Breadcrumb navigation works
-- [ ] AI analysis provides detailed errors (if enabled)
-- [ ] Pattern analysis works as fallback
+- [ ] I key opens tabbed info panel
+- [ ] C key copies element data
+- [ ] S key screenshots element
+- [ ] Annotation tools
+- [ ] Color picker
+- [ ] Measurement tool
+- [ ] Grid/Flex detection overlay
+- [ ] Breadcrumb navigation bar
 
 ## Keyboard Shortcuts Summary
 
-| Key | Action |
-|-----|--------|
-| `Ctrl+Alt` | Toggle persistent tooltip |
-| `Arrow Keys` | Navigate DOM |
-| `Tab` | Next in tab order |
-| `Enter` | Inspect element |
-| `Escape` | Exit selection |
-| `Ctrl+Click` | Multi-select |
-| `P` | Performance overlay |
-| `E` | CSS editor |
-| `I` | Info panel |
-| `C` | Copy element data |
-| `S` | Screenshot element |
+### Currently Working ✅
+| Key | Action | Status |
+|-----|--------|--------|
+| `Arrow Keys` | Navigate DOM (parent/siblings/children) | ✅ Working |
+| `Tab` | Next focusable element | ✅ Working |
+| `Enter` | Select hovered element | ✅ Working |
+| `Escape` | Exit Visual Bug Reporter | ✅ Working |
+
+### Planned but Not Implemented ❌
+| Key | Action | Status |
+|-----|--------|--------|
+| `Ctrl+Alt` | Toggle persistent tooltip | ❌ TODO |
+| `Ctrl+Click` | Multi-select elements | ⚠️ Partial |
+| `P` | Performance overlay | ❌ TODO |
+| `E` | CSS editor | ❌ TODO |
+| `I` | Info panel tabs | ❌ TODO |
+| `C` | Copy element data | ❌ TODO |
+| `S` | Screenshot element | ❌ TODO |
 
 ## Expected Console Output
 
 When working correctly, you should see:
 ```
-[Mosqit] Visual Bug Reporter initialized
-[Mosqit] Visual capture mode activated
-[Mosqit] Element selected: div.className
-[Mosqit] Performance overlay enabled
-[Mosqit] CSS Editor opened for element
+[Visual Bug Reporter] Starting visual bug reporting mode
+[Visual Bug Reporter] Element at click point: <element>
+[Visual Bug Reporter] Starting element capture...
+[Visual Bug Reporter] Element data collected: {element details}
+[Visual Bug Reporter] Debug context collected: {debug info}
+[Visual Bug Reporter] Screenshot received
+[Visual Bug Reporter] Sending bug capture to bridge...
+[Visual Bug Reporter] Bug capture message posted
+```
+
+For features NOT yet implemented, you would see:
+```
+// These TODO functions exist but don't do anything yet:
+startAnnotation() - TODO: Implement annotation mode
+startColorPicker() - TODO: Implement color picker
+startMeasure() - TODO: Implement measurement tool
 ```
 
 ## Reporting Issues

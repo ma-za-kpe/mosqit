@@ -186,11 +186,14 @@ export default function Home() {
         }
         .tech-badge {
           padding: 10px 20px;
-          background: rgba(255, 255, 255, 0.1);
-          border: 2px solid rgba(255, 255, 255, 0.3);
+          background: linear-gradient(135deg, #667eea, #764ba2);
+          border: 2px solid rgba(102, 126, 234, 0.3);
           border-radius: 25px;
           color: white;
           font-weight: 600;
+          font-size: 0.95rem;
+          box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+          transition: all 0.3s ease;
         }
         .installation-steps {
           background: #f7fafc;

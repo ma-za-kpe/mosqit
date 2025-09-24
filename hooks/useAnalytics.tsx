@@ -115,7 +115,7 @@ export const useAnalytics = () => {
   }, []);
 
   // Track user preferences
-  const trackUserPreference = useCallback((preference: string, value: unknown) => {
+  const trackUserPreference = useCallback((preference: string, value: string | number | boolean) => {
     trackPreference(preference, value);
   }, []);
 

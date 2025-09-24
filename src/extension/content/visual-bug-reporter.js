@@ -65,6 +65,15 @@ class VisualBugReporter {
       // Only accept messages from our own window
       if (event.source !== window) return;
 
+      // Debug all messages received
+      if (event.data && typeof event.data === 'object') {
+        console.log('[Visual Bug Reporter] Received message:', {
+          type: event.data.type,
+          source: event.data.source,
+          fullData: event.data
+        });
+      }
+
       // Check if it's from our bridge
       if (event.data && event.data.source === 'mosqit-bridge') {
         if (event.data.type === 'START_VISUAL_BUG_REPORT') {
@@ -83,7 +92,16 @@ class VisualBugReporter {
    * Start visual bug reporting mode
    */
   start() {
-    if (this.isActive) return;
+    if (this.isActive) {
+      console.warn('[Visual Bug Reporter] Already active, ignoring start request');
+      return;
+    }
+
+    console.log('[Visual Bug Reporter] Starting visual bug reporting mode');
+    // Only trace in real browser environment, not in tests
+    if (typeof process === 'undefined' || process.env.NODE_ENV !== 'test') {
+      console.trace('[Visual Bug Reporter] Start method called from:');
+    }
 
     this.isActive = true;
     this.mode = 'select';

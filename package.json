@@ -21,7 +21,7 @@
     "test:unit": "jest --coverage",
     "test:watch": "jest --watch",
     "test:ci": "jest --ci --coverage --maxWorkers=2",
-    "test:debug": "node --inspect-brk ./node_modules/.bin/jest --runInBand",
+    "test:debug": "node --max-old-space-size=4096 --inspect-brk ./node_modules/.bin/jest --runInBand --no-cache --detectOpenHandles",
     "test:runner": "node tests/run-tests.js",
     "analyze": "ANALYZE=true next build",
     "build:extension": "node scripts/build-extension.js",

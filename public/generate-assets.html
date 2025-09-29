@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mosqit Asset Generator</title>
+</head>
+<body>
+    <h1>Mosqit Asset Generator</h1>
+    <p>Open this page in Chrome, then right-click each canvas and save as the specified filename.</p>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .asset-container {
+            margin: 20px 0;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        canvas {
+            border: 1px solid #ddd;
+            display: block;
+            margin: 10px 0;
+        }
+        .filename {
+            font-family: monospace;
+            background: #f5f5f5;
+            padding: 5px 10px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+    </style>
+
+    <!-- Favicon 16x16 -->
+    <div class="asset-container">
+        <h2>Favicon 16x16</h2>
+        <p>Save as: <span class="filename">favicon-16x16.png</span></p>
+        <canvas id="favicon16" width="16" height="16"></canvas>
+    </div>
+
+    <!-- Favicon 32x32 -->
+    <div class="asset-container">
+        <h2>Favicon 32x32</h2>
+        <p>Save as: <span class="filename">favicon-32x32.png</span></p>
+        <canvas id="favicon32" width="32" height="32"></canvas>
+    </div>
+
+    <!-- Icon 48x48 -->
+    <div class="asset-container">
+        <h2>Icon 48x48</h2>
+        <p>Save as: <span class="filename">icon-48.png</span></p>
+        <canvas id="icon48" width="48" height="48"></canvas>
+    </div>
+
+    <!-- Icon 96x96 -->
+    <div class="asset-container">
+        <h2>Icon 96x96</h2>
+        <p>Save as: <span class="filename">icon-96.png</span></p>
+        <canvas id="icon96" width="96" height="96"></canvas>
+    </div>
+
+    <!-- Icon 128x128 -->
+    <div class="asset-container">
+        <h2>Icon 128x128 (Chrome Extension)</h2>
+        <p>Save as: <span class="filename">icon-128.png</span></p>
+        <canvas id="icon128" width="128" height="128"></canvas>
+    </div>
+
+    <!-- Icon 192x192 -->
+    <div class="asset-container">
+        <h2>Icon 192x192 (PWA)</h2>
+        <p>Save as: <span class="filename">icon-192.png</span></p>
+        <canvas id="icon192" width="192" height="192"></canvas>
+    </div>
+
+    <!-- Icon 512x512 -->
+    <div class="asset-container">
+        <h2>Icon 512x512 (PWA Large)</h2>
+        <p>Save as: <span class="filename">icon-512.png</span></p>
+        <canvas id="icon512" width="512" height="512"></canvas>
+    </div>
+
+    <!-- Apple Touch Icon -->
+    <div class="asset-container">
+        <h2>Apple Touch Icon 180x180</h2>
+        <p>Save as: <span class="filename">apple-touch-icon.png</span></p>
+        <canvas id="apple180" width="180" height="180"></canvas>
+    </div>
+
+    <!-- OG Image 1200x630 -->
+    <div class="asset-container">
+        <h2>Open Graph Image 1200x630</h2>
+        <p>Save as: <span class="filename">og-image.png</span></p>
+        <canvas id="og" width="1200" height="630"></canvas>
+    </div>
+
+    <!-- Twitter Image 1200x600 -->
+    <div class="asset-container">
+        <h2>Twitter Card Image 1200x600</h2>
+        <p>Save as: <span class="filename">twitter-image.png</span></p>
+        <canvas id="twitter" width="1200" height="600"></canvas>
+    </div>
+
+    <!-- Chrome Web Store Images -->
+    <div class="asset-container">
+        <h2>Chrome Web Store - Small Promo Tile 440x280</h2>
+        <p>Save as: <span class="filename">promo-small.png</span></p>
+        <canvas id="promo-small" width="440" height="280"></canvas>
+    </div>
+
+    <div class="asset-container">
+        <h2>Chrome Web Store - Large Promo Tile 920x680</h2>
+        <p>Save as: <span class="filename">promo-large.png</span></p>
+        <canvas id="promo-large" width="920" height="680"></canvas>
+    </div>
+
+    <div class="asset-container">
+        <h2>Chrome Web Store - Marquee Promo Tile 1400x560</h2>
+        <p>Save as: <span class="filename">promo-marquee.png</span></p>
+        <canvas id="promo-marquee" width="1400" height="560"></canvas>
+    </div>
+
+    <script>
+        // Function to draw mosquito logo with gradient background
+        function drawMosqitLogo(canvas, showText = false, showTagline = false) {
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width;
+            const height = canvas.height;
+
+            // Create gradient background
+            const gradient = ctx.createLinearGradient(0, 0, width, height);
+            gradient.addColorStop(0, '#667eea');
+            gradient.addColorStop(1, '#764ba2');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, width, height);
+
+            // Add subtle circle background for small icons
+            if (width <= 512) {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+                ctx.beginPath();
+                ctx.arc(width / 2, height / 2, width * 0.45, 0, 2 * Math.PI);
+                ctx.fill();
+            }
+
+            // Calculate emoji size based on canvas size
+            let emojiSize = width * 0.5;
+            if (showText) {
+                emojiSize = width * 0.3;
+            }
+
+            // Draw mosquito emoji
+            ctx.font = `${emojiSize}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = 'white';
+
+            // Add shadow for better visibility
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+            ctx.shadowBlur = width * 0.02;
+            ctx.shadowOffsetX = width * 0.01;
+            ctx.shadowOffsetY = width * 0.01;
+
+            const yPos = showText ? height * 0.35 : height / 2;
+            ctx.fillText('🦟', width / 2, yPos);
+
+            // Reset shadow
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+
+            // Add text for larger images
+            if (showText) {
+                // Add "Mosqit" text
+                ctx.font = `bold ${width * 0.08}px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
+                ctx.fillStyle = 'white';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('Mosqit', width / 2, height * 0.6);
+
+                if (showTagline) {
+                    // Add tagline
+                    ctx.font = `${width * 0.03}px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                    ctx.fillText('AI-Powered Debugging Assistant', width / 2, height * 0.7);
+
+                    // Add features for very large images
+                    if (width >= 920) {
+                        ctx.font = `${width * 0.025}px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
+                        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                        const features = ['🤖 Chrome Built-in AI', '🔒 100% On-Device', '⚡ Real-Time Analysis'];
+                        features.forEach((feature, index) => {
+                            ctx.fillText(feature, width / 2, height * 0.8 + (index * width * 0.04));
+                        });
+                    }
+                }
+            }
+
+            // Add border for web store images
+            if (width >= 440) {
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(1, 1, width - 2, height - 2);
+            }
+        }
+
+        // Generate all assets
+        drawMosqitLogo(document.getElementById('favicon16'));
+        drawMosqitLogo(document.getElementById('favicon32'));
+        drawMosqitLogo(document.getElementById('icon48'));
+        drawMosqitLogo(document.getElementById('icon96'));
+        drawMosqitLogo(document.getElementById('icon128'));
+        drawMosqitLogo(document.getElementById('icon192'));
+        drawMosqitLogo(document.getElementById('icon512'));
+        drawMosqitLogo(document.getElementById('apple180'));
+        drawMosqitLogo(document.getElementById('og'), true, true);
+        drawMosqitLogo(document.getElementById('twitter'), true, true);
+        drawMosqitLogo(document.getElementById('promo-small'), true, true);
+        drawMosqitLogo(document.getElementById('promo-large'), true, true);
+        drawMosqitLogo(document.getElementById('promo-marquee'), true, true);
+
+        // Auto-download function for each canvas
+        function downloadCanvas(canvasId, filename) {
+            const canvas = document.getElementById(canvasId);
+            canvas.toBlob(function(blob) {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                // Uncomment to auto-download
+                // a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            });
+        }
+
+        // Add download buttons
+        document.querySelectorAll('.asset-container').forEach((container, index) => {
+            const canvas = container.querySelector('canvas');
+            const filename = container.querySelector('.filename').textContent;
+
+            const button = document.createElement('button');
+            button.textContent = 'Download';
+            button.style.cssText = 'background: #667eea; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin-top: 10px;';
+            button.onclick = () => downloadCanvas(canvas.id, filename);
+
+            container.appendChild(button);
+        });
+    </script>
+</body>
+</html>

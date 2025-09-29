@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mosqit - Chrome AI Test (Correct Implementation)</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #1a202c;
+            margin: 0 0 10px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .subtitle {
+            color: #718096;
+            margin-bottom: 30px;
+        }
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .api-card {
+            background: #f7fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            transition: all 0.3s;
+        }
+        .api-card.available {
+            background: #f0fdf4;
+            border-color: #10b981;
+        }
+        .api-card.downloading {
+            background: #fffbeb;
+            border-color: #f59e0b;
+            animation: pulse 2s infinite;
+        }
+        .api-card.unavailable {
+            background: #fef2f2;
+            border-color: #ef4444;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+        .api-name {
+            font-weight: 600;
+            font-size: 18px;
+            margin-bottom: 8px;
+        }
+        .api-status {
+            font-size: 14px;
+            color: #4a5568;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 5px;
+            transition: all 0.3s;
+        }
+        button:hover {
+            background: #5a67d8;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        button:disabled {
+            background: #cbd5e0;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .button-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        #output {
+            margin-top: 20px;
+            padding: 20px;
+            background: #1a202c;
+            color: #e2e8f0;
+            border-radius: 8px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+        }
+        .success { color: #48bb78; }
+        .warning { color: #ed8936; }
+        .error { color: #f56565; }
+        .info { color: #4299e1; }
+        .highlight {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 600;
+        }
+        .instructions {
+            background: #edf2f7;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .instructions h3 {
+            margin-top: 0;
+            color: #2d3748;
+        }
+        .instructions ol {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .instructions li {
+            margin: 5px 0;
+        }
+        .instructions code {
+            background: #2d3748;
+            color: #48bb78;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🦟 <span class="highlight">Mosqit Chrome AI Test</span></h1>
+        <p class="subtitle">Testing Chrome's Built-in Writer, Rewriter, and Summarizer APIs</p>
+
+        <div class="status-grid" id="statusGrid">
+            <!-- API cards will be inserted here -->
+        </div>
+
+        <div class="instructions">
+            <h3>📋 Quick Setup Guide</h3>
+            <ol>
+                <li>Ensure you have Chrome 128+ (you have: <span id="chromeVersion">checking...</span>)</li>
+                <li>Enable flags at <code>chrome://flags</code>:
+                    <ul>
+                        <li><code>#optimization-guide-on-device-model</code> → Enabled BypassPerfRequirement</li>
+                        <li><code>#writer-api-for-gemini-nano</code> → Enabled</li>
+                        <li><code>#rewriter-api-for-gemini-nano</code> → Enabled</li>
+                        <li><code>#summarization-api-for-gemini-nano</code> → Enabled</li>
+                    </ul>
+                </li>
+                <li>Restart Chrome completely (not just the tab)</li>
+                <li>Click "Check All APIs" below</li>
+            </ol>
+        </div>
+
+        <div class="button-group">
+            <button onclick="checkAllAPIs()">🔍 Check All APIs</button>
+            <button onclick="testWriter()">✍️ Test Writer</button>
+            <button onclick="testRewriter()">✏️ Test Rewriter</button>
+            <button onclick="testSummarizer()">📄 Test Summarizer</button>
+            <button onclick="downloadModels()">⬇️ Download Models</button>
+            <button onclick="testMosqit()">🦟 Test Mosqit Integration</button>
+        </div>
+
+        <div id="output"></div>
+    </div>
+
+    <script>
+        const output = document.getElementById('output');
+        const statusGrid = document.getElementById('statusGrid');
+
+        function log(message, className = '') {
+            const timestamp = new Date().toLocaleTimeString();
+            const prefix = className ? `<span class="${className}">[${timestamp}]</span> ` : `[${timestamp}] `;
+            output.innerHTML += prefix + message + '\n';
+            output.scrollTop = output.scrollHeight;
+            console.log(message);
+        }
+
+        function clearOutput() {
+            output.innerHTML = '';
+        }
+
+        // Check Chrome version
+        window.addEventListener('load', () => {
+            const match = navigator.userAgent.match(/Chrome\/(\d+)/);
+            const version = match ? match[1] : 'Unknown';
+            document.getElementById('chromeVersion').textContent = version;
+
+            if (version && parseInt(version) < 128) {
+                document.getElementById('chromeVersion').style.color = '#ef4444';
+            } else {
+                document.getElementById('chromeVersion').style.color = '#10b981';
+            }
+
+            // Auto-check APIs on load
+            setTimeout(checkAllAPIs, 500);
+        });
+
+        async function checkAllAPIs() {
+            clearOutput();
+            log('=== Checking Chrome AI APIs ===\n', 'info');
+
+            const apis = [
+                {
+                    name: 'Writer API',
+                    global: 'Writer',
+                    check: async () => {
+                        if (typeof Writer === 'undefined') return 'not-found';
+                        try {
+                            return await Writer.availability();
+                        } catch (e) {
+                            return 'error: ' + e.message;
+                        }
+                    }
+                },
+                {
+                    name: 'Rewriter API',
+                    global: 'Rewriter',
+                    check: async () => {
+                        if (typeof Rewriter === 'undefined') return 'not-found';
+                        try {
+                            return await Rewriter.availability();
+                        } catch (e) {
+                            return 'error: ' + e.message;
+                        }
+                    }
+                },
+                {
+                    name: 'Summarizer API',
+                    global: 'Summarizer',
+                    check: async () => {
+                        if (typeof Summarizer === 'undefined') return 'not-found';
+                        try {
+                            return await Summarizer.availability();
+                        } catch (e) {
+                            return 'error: ' + e.message;
+                        }
+                    }
+                }
+            ];
+
+            statusGrid.innerHTML = '';
+
+            for (const api of apis) {
+                const status = await api.check();
+                let cardClass = 'unavailable';
+                let statusText = '❌ Not Available';
+                let statusDetail = '';
+
+                if (status === 'available') {
+                    cardClass = 'available';
+                    statusText = '✅ Ready';
+                    statusDetail = 'Model loaded and ready to use';
+                    log(`${api.name}: Ready to use!`, 'success');
+                } else if (status === 'downloadable') {
+                    cardClass = 'downloading';
+                    statusText = '📥 Download Required';
+                    statusDetail = 'Click "Download Models" to start';
+                    log(`${api.name}: Model download required`, 'warning');
+                } else if (status === 'downloading') {
+                    cardClass = 'downloading';
+                    statusText = '⏳ Downloading...';
+                    statusDetail = 'Model is currently downloading';
+                    log(`${api.name}: Currently downloading`, 'info');
+                } else if (status === 'not-found') {
+                    cardClass = 'unavailable';
+                    statusText = '❌ Not Found';
+                    statusDetail = 'API not available (check flags)';
+                    log(`${api.name}: Not found (enable flags)`, 'error');
+                } else {
+                    statusDetail = status;
+                    log(`${api.name}: ${status}`, 'error');
+                }
+
+                const card = document.createElement('div');
+                card.className = `api-card ${cardClass}`;
+                card.innerHTML = `
+                    <div class="api-name">${api.name}</div>
+                    <div class="api-status">${statusText}</div>
+                    <div style="font-size: 12px; color: #718096; margin-top: 8px;">${statusDetail}</div>
+                `;
+                statusGrid.appendChild(card);
+            }
+
+            log('\n✨ Check complete!', 'info');
+        }
+
+        async function testWriter() {
+            clearOutput();
+            log('=== Testing Writer API ===\n', 'info');
+
+            if (typeof Writer === 'undefined') {
+                log('❌ Writer API not found', 'error');
+                return;
+            }
+
+            try {
+                const availability = await Writer.availability();
+                log(`Availability: ${availability}`, 'info');
+
+                if (availability !== 'available') {
+                    log('⚠️ Model not ready, attempting to trigger download...', 'warning');
+                }
+
+                const writer = await Writer.create({
+                    tone: 'neutral',
+                    format: 'plain-text',
+                    sharedContext: 'You are analyzing JavaScript errors'
+                });
+
+                const result = await writer.write(
+                    'Create a bug report for: TypeError Cannot read property of null at line 42'
+                );
+
+                log('\n✅ Writer API Response:', 'success');
+                log(result);
+
+                writer.destroy();
+            } catch (e) {
+                log(`❌ Error: ${e.message}`, 'error');
+            }
+        }
+
+        async function testRewriter() {
+            clearOutput();
+            log('=== Testing Rewriter API ===\n', 'info');
+
+            if (typeof Rewriter === 'undefined') {
+                log('❌ Rewriter API not found', 'error');
+                return;
+            }
+
+            try {
+                const availability = await Rewriter.availability();
+                log(`Availability: ${availability}`, 'info');
+
+                const rewriter = await Rewriter.create({
+                    tone: 'more-formal',
+                    length: 'shorter'
+                });
+
+                const input = 'Error happened when user clicked button. App crashed. Need fix.';
+                log(`\nInput: "${input}"`, 'info');
+
+                const result = await rewriter.rewrite(input);
+
+                log('\n✅ Rewriter API Response:', 'success');
+                log(result);
+
+                rewriter.destroy();
+            } catch (e) {
+                log(`❌ Error: ${e.message}`, 'error');
+            }
+        }
+
+        async function testSummarizer() {
+            clearOutput();
+            log('=== Testing Summarizer API ===\n', 'info');
+
+            if (typeof Summarizer === 'undefined') {
+                log('❌ Summarizer API not found', 'error');
+                return;
+            }
+
+            try {
+                const availability = await Summarizer.availability();
+                log(`Availability: ${availability}`, 'info');
+
+                const summarizer = await Summarizer.create({
+                    type: 'tl;dr',
+                    format: 'plain-text',
+                    length: 'short'
+                });
+
+                const input = `A null reference error occurs when code attempts to access a property or method of an object
+                that is null or undefined. This commonly happens in JavaScript when data from an API hasn't loaded yet,
+                or when a component renders before receiving required props. The error typically manifests as
+                "TypeError: Cannot read property 'x' of null" or similar messages.`;
+
+                log('\nSummarizing error explanation...', 'info');
+
+                const result = await summarizer.summarize(input);
+
+                log('\n✅ Summarizer API Response:', 'success');
+                log(result);
+
+                summarizer.destroy();
+            } catch (e) {
+                log(`❌ Error: ${e.message}`, 'error');
+            }
+        }
+
+        async function downloadModels() {
+            clearOutput();
+            log('=== Triggering Model Downloads ===\n', 'info');
+
+            const apis = [
+                { name: 'Writer', create: () => Writer.create() },
+                { name: 'Rewriter', create: () => Rewriter.create() },
+                { name: 'Summarizer', create: () => Summarizer.create() }
+            ];
+
+            for (const api of apis) {
+                if (typeof window[api.name] === 'undefined') {
+                    log(`${api.name}: Not available`, 'error');
+                    continue;
+                }
+
+                try {
+                    log(`${api.name}: Attempting to create session...`, 'info');
+                    const session = await api.create();
+                    session.destroy();
+                    log(`${api.name}: ✅ Ready!`, 'success');
+                } catch (e) {
+                    log(`${api.name}: Download triggered or error: ${e.message}`, 'warning');
+                }
+            }
+
+            log('\n📊 Downloads initiated!', 'info');
+            log('The ~2GB Gemini Nano model will download in the background.', 'info');
+            log('Check chrome://on-device-internals for progress.', 'info');
+        }
+
+        async function testMosqit() {
+            clearOutput();
+            log('=== Testing Mosqit Integration ===\n', 'info');
+            log('🦟 Simulating Mosqit error detection and AI analysis...\n', 'info');
+
+            // Simulate an error
+            try {
+                const user = null;
+                console.log(user.name); // This will throw
+            } catch (error) {
+                log('❌ Error captured: ' + error.message, 'error');
+
+                // Test if Chrome AI is available
+                if (typeof Writer !== 'undefined') {
+                    try {
+                        const writer = await Writer.create({
+                            tone: 'neutral',
+                            format: 'plain-text',
+                            sharedContext: 'You are Mosqit, a debugging assistant'
+                        });
+
+                        const analysis = await writer.write(
+                            `Analyze this error and provide debugging help: ${error.message}`
+                        );
+
+                        log('\n🤖 Mosqit AI Analysis:', 'success');
+                        log(analysis);
+
+                        writer.destroy();
+                    } catch (e) {
+                        log('⚠️ AI analysis failed, using fallback', 'warning');
+                        log('🔍 Fallback: Null reference - add optional chaining (?.) or null checks', 'info');
+                    }
+                } else {
+                    log('⚠️ Chrome AI not available, using pattern matching', 'warning');
+                    log('🔍 Pattern match: Null reference error - check object initialization', 'info');
+                }
+            }
+
+            log('\n✅ Mosqit test complete!', 'success');
+        }
+    </script>
+</body>
+</html>

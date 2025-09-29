@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Convert SVG to PNG - Mosqit</title>
+    <style>
+        body {
+            margin: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f0f0;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .converter-section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin: 20px 0;
+        }
+        .converter-section h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+        .preview {
+            margin: 20px 0;
+            text-align: center;
+        }
+        .preview img {
+            max-width: 100%;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        canvas {
+            display: none;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 10px;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #5a67d8;
+        }
+        .button-group {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 6px;
+            text-align: center;
+        }
+        .status.success {
+            background: #f0fdf4;
+            color: #166534;
+            border: 1px solid #22c55e;
+        }
+        .status.loading {
+            background: #eff6ff;
+            color: #1e40af;
+            border: 1px solid #60a5fa;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🦟 Convert Mosqit SVGs to PNG</h1>
+
+        <!-- Submission Image Converter -->
+        <div class="converter-section">
+            <h2>Hackathon Submission Image (1200x630)</h2>
+            <div id="status1" class="status loading">Loading SVG...</div>
+            <div class="preview">
+                <img id="preview1" src="/mosqit-hackathon-submission.svg" alt="Mosqit Hackathon Submission">
+            </div>
+            <canvas id="canvas1" width="1200" height="630"></canvas>
+            <div class="button-group">
+                <button onclick="convertToPNG('mosqit-hackathon-submission.svg', 'canvas1', 1200, 630, 'mosqit-hackathon-submission.png')">
+                    📥 Download as PNG
+                </button>
+                <button onclick="convertToJPG('mosqit-hackathon-submission.svg', 'canvas1', 1200, 630, 'mosqit-hackathon-submission.jpg')">
+                    📥 Download as JPG
+                </button>
+            </div>
+        </div>
+
+        <!-- Features Showcase Converter -->
+        <div class="converter-section">
+            <h2>Features Showcase Image (1920x1080)</h2>
+            <div id="status2" class="status loading">Loading SVG...</div>
+            <div class="preview">
+                <img id="preview2" src="/mosqit-features-showcase.svg" alt="Mosqit Features Showcase">
+            </div>
+            <canvas id="canvas2" width="1920" height="1080"></canvas>
+            <div class="button-group">
+                <button onclick="convertToPNG('mosqit-features-showcase.svg', 'canvas2', 1920, 1080, 'mosqit-features-showcase.png')">
+                    📥 Download as PNG
+                </button>
+                <button onclick="convertToJPG('mosqit-features-showcase.svg', 'canvas2', 1920, 1080, 'mosqit-features-showcase.jpg')">
+                    📥 Download as JPG
+                </button>
+            </div>
+        </div>
+
+        <!-- Batch Download -->
+        <div class="converter-section">
+            <h2>Batch Download</h2>
+            <div class="button-group">
+                <button onclick="downloadAll()">
+                    📦 Download All as PNG
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Check if images are loaded
+        window.onload = function() {
+            document.getElementById('status1').className = 'status success';
+            document.getElementById('status1').textContent = '✅ SVG loaded successfully!';
+            document.getElementById('status2').className = 'status success';
+            document.getElementById('status2').textContent = '✅ SVG loaded successfully!';
+        };
+
+        async function convertToPNG(svgPath, canvasId, width, height, filename) {
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvas.getContext('2d');
+
+            // Clear canvas
+            ctx.clearRect(0, 0, width, height);
+
+            // Create image from SVG
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+
+            img.onload = function() {
+                // Draw image to canvas
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // Convert to PNG and download
+                canvas.toBlob(function(blob) {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }, 'image/png', 1.0);
+            };
+
+            // Load SVG
+            img.src = svgPath;
+        }
+
+        async function convertToJPG(svgPath, canvasId, width, height, filename) {
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvas.getContext('2d');
+
+            // Clear canvas and add white background for JPG
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, width, height);
+
+            // Create image from SVG
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+
+            img.onload = function() {
+                // Draw image to canvas
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // Convert to JPG and download
+                canvas.toBlob(function(blob) {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }, 'image/jpeg', 0.95);
+            };
+
+            // Load SVG
+            img.src = svgPath;
+        }
+
+        function downloadAll() {
+            // Download both images as PNG
+            setTimeout(() => {
+                convertToPNG('mosqit-hackathon-submission.svg', 'canvas1', 1200, 630, 'mosqit-hackathon-submission.png');
+            }, 100);
+
+            setTimeout(() => {
+                convertToPNG('mosqit-features-showcase.svg', 'canvas2', 1920, 1080, 'mosqit-features-showcase.png');
+            }, 500);
+        }
+    </script>
+</body>
+</html>

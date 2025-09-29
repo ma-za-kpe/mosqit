@@ -7,7 +7,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/mosqit.git"
+    "url": "https://github.com/ma-za-kpe/mosqit.git"
   },
   "scripts": {
     "dev": "next dev --turbopack",
@@ -17,9 +17,12 @@
     "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix",
     "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,md}\"",
     "format:check": "prettier --check \"**/*.{js,jsx,ts,tsx,json,md}\"",
-    "test": "echo \"Tests will be added\" && exit 0",
+    "test": "jest",
     "test:unit": "jest --coverage",
-    "test:e2e": "playwright test",
+    "test:watch": "jest --watch",
+    "test:ci": "jest --ci --coverage --maxWorkers=2",
+    "test:debug": "node --max-old-space-size=4096 --inspect-brk ./node_modules/.bin/jest --runInBand --no-cache --detectOpenHandles",
+    "test:runner": "node tests/run-tests.js",
     "analyze": "ANALYZE=true next build",
     "build:extension": "node scripts/build-extension.js",
     "build:extension:prod": "NODE_ENV=production node scripts/build-extension.js",
@@ -34,22 +37,35 @@
     "deploy:production": "vercel --prod",
     "env:check": "node scripts/check-env.js",
     "clean": "rm -rf .next dist node_modules/.cache",
-    "clean:all": "rm -rf .next dist node_modules package-lock.json"
+    "clean:all": "rm -rf .next dist node_modules package-lock.json",
+    "version:patch": "node scripts/bump-version.js patch",
+    "version:minor": "node scripts/bump-version.js minor",
+    "version:major": "node scripts/bump-version.js major",
+    "release": "npm run build:extension && npm run version:patch && git push origin main --tags"
   },
   "dependencies": {
+    "@vercel/analytics": "^1.5.0",
+    "next": "15.5.3",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "next": "15.5.3"
+    "styled-jsx": "^5.1.7"
   },
   "devDependencies": {
-    "typescript": "^5",
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^6.8.0",
+    "@testing-library/react": "^16.3.0",
+    "@types/chrome": "^0.1.12",
+    "@types/jest": "^30.0.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@tailwindcss/postcss": "^4",
-    "tailwindcss": "^4",
     "eslint": "^9",
     "eslint-config-next": "15.5.3",
-    "@eslint/eslintrc": "^3"
+    "fake-indexeddb": "^6.2.2",
+    "jest": "^30.1.3",
+    "jest-environment-jsdom": "^30.1.2",
+    "tailwindcss": "^4",
+    "typescript": "^5"
   }
 }

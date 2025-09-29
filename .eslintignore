@@ -1,0 +1,9 @@
+node_modules
+.next
+dist
+build
+out
+coverage
+*.config.js
+*.config.ts
+scripts/*.js

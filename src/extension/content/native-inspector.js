@@ -115,19 +115,48 @@ class NativeInspector {
       background: transparent;
     `;
 
-    // Visual highlight element
+    // Visual highlight element with enhanced design
     this.highlightEl = document.createElement('div');
     this.highlightEl.style.cssText = `
       position: absolute;
-      border: 2px solid #1a73e8;
-      background: rgba(26, 115, 232, 0.1);
+      border: 3px solid #1a73e8;
+      background: rgba(26, 115, 232, 0.15);
+      box-shadow: 0 0 20px rgba(26, 115, 232, 0.5),
+                  inset 0 0 20px rgba(26, 115, 232, 0.1),
+                  0 4px 12px rgba(26, 115, 232, 0.3);
       pointer-events: none;
       z-index: 2147483646;
-      transition: all 0.1s ease-out;
+      transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
       display: none;
+      border-radius: 4px;
+    `;
+
+    // Add a tooltip/label to show element info
+    this.tooltipEl = document.createElement('div');
+    this.tooltipEl.style.cssText = `
+      position: absolute;
+      background: linear-gradient(135deg, #1a73e8 0%, #1557b0 100%);
+      color: white;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15),
+                  0 2px 4px rgba(0, 0, 0, 0.1);
+      pointer-events: none;
+      z-index: 2147483647;
+      display: none;
+      white-space: nowrap;
+      max-width: 300px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
     `;
 
     document.body.appendChild(this.highlightEl);
+    document.body.appendChild(this.tooltipEl);
     document.body.appendChild(this.clickInterceptor);
 
     // Track mouse movement for highlighting
@@ -171,18 +200,43 @@ class NativeInspector {
   }
 
   /**
-   * Highlight an element visually
+   * Highlight an element visually with enhanced design
    */
   highlightElement(element) {
     const rect = element.getBoundingClientRect();
     const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
     const scrollY = window.pageYOffset || document.documentElement.scrollTop;
 
+    // Update highlight box position and size
     this.highlightEl.style.display = 'block';
     this.highlightEl.style.left = (rect.left + scrollX) + 'px';
     this.highlightEl.style.top = (rect.top + scrollY) + 'px';
     this.highlightEl.style.width = rect.width + 'px';
     this.highlightEl.style.height = rect.height + 'px';
+
+    // Generate element info for tooltip
+    const tagName = element.tagName.toLowerCase();
+    const id = element.id ? `#${element.id}` : '';
+    const classes = element.className ? `.${element.className.split(' ').filter(c => c).join('.')}` : '';
+    const dimensions = `${Math.round(rect.width)} × ${Math.round(rect.height)}`;
+
+    // Build tooltip text
+    let tooltipText = tagName;
+    if (id) tooltipText += id;
+    else if (classes) tooltipText += classes.substring(0, 50); // Limit class length
+    tooltipText += ` | ${dimensions}px`;
+
+    // Update tooltip content and position
+    this.tooltipEl.textContent = tooltipText;
+    this.tooltipEl.style.display = 'block';
+
+    // Position tooltip above the element if there's room, otherwise below
+    const tooltipTop = rect.top > 40 ?
+      (rect.top + scrollY - 35) + 'px' :
+      (rect.bottom + scrollY + 5) + 'px';
+
+    this.tooltipEl.style.left = (rect.left + scrollX) + 'px';
+    this.tooltipEl.style.top = tooltipTop;
   }
 
   /**
@@ -475,6 +529,11 @@ class NativeInspector {
     if (this.highlightEl) {
       this.highlightEl.remove();
       this.highlightEl = null;
+    }
+
+    if (this.tooltipEl) {
+      this.tooltipEl.remove();
+      this.tooltipEl = null;
     }
 
     if (this.escHandler) {

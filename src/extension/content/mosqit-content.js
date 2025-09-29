@@ -26,6 +26,10 @@
       this.userActionHistory = [];
       this.maxActionHistory = 5;
 
+      // Track highlighted elements for cleanup
+      this.highlightedElements = new WeakMap();
+      this.highlightTimeouts = new Set();
+
       this.init();
     }
 
@@ -34,7 +38,32 @@
       this.overrideConsoleMethods();
       this.setupErrorListener();
       this.setupUserActionTracking();
+      this.setupCleanupHandlers();
       console.log('[Mosqit] ✅ Logger initialized');
+    }
+
+    setupCleanupHandlers() {
+      // Clean up on page unload
+      window.addEventListener('beforeunload', () => {
+        this.cleanupHighlights();
+      });
+
+      // Clean up on page hide (for mobile/tab switching)
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+          this.cleanupHighlights();
+        }
+      });
+
+      // Clean up on navigation (SPA)
+      window.addEventListener('popstate', () => {
+        this.cleanupHighlights();
+      });
+
+      // Also run cleanup periodically to catch any orphaned highlights
+      setInterval(() => {
+        this.cleanupHighlights();
+      }, 10000); // Every 10 seconds
     }
 
     setupUserActionTracking() {
@@ -679,8 +708,8 @@
             overflow: styles.overflow
           };
 
-          // Highlight element for visual debugging
-          this.highlightElement(element);
+          // Highlight element for visual debugging - DISABLED due to persistence issues
+          // this.highlightElement(element);
         }
 
         // Capture viewport screenshot context
@@ -762,26 +791,88 @@
     highlightElement(element) {
       if (!element) return;
 
-      // Store original styles
-      const originalOutline = element.style.outline;
-      const originalBoxShadow = element.style.boxShadow;
-      const originalTransition = element.style.transition;
+      // Check if element is already highlighted
+      if (this.highlightedElements.has(element)) {
+        const existingTimeout = this.highlightedElements.get(element);
+        clearTimeout(existingTimeout);
+        this.highlightTimeouts.delete(existingTimeout);
+      }
 
-      // Apply highlight with animation
-      element.style.transition = 'all 0.3s ease';
-      element.style.outline = '3px solid #ff4444';
-      element.style.boxShadow = '0 0 20px rgba(255, 68, 68, 0.5)';
+      // Store original styles more robustly
+      const originalStyles = {
+        outline: element.style.outline,
+        boxShadow: element.style.boxShadow,
+        transition: element.style.transition
+      };
+
+      // Create a unique class for this highlight to avoid conflicts
+      const highlightClass = 'mosqit-error-highlight-' + Date.now();
+
+      // Add styles via a temporary style element to avoid inline style conflicts
+      const styleEl = document.createElement('style');
+      styleEl.textContent = `
+        .${highlightClass} {
+          outline: 3px solid #ff4444 !important;
+          box-shadow: 0 0 20px rgba(255, 68, 68, 0.5) !important;
+          transition: all 0.3s ease !important;
+        }
+      `;
+      document.head.appendChild(styleEl);
+      element.classList.add(highlightClass);
 
       // Remove highlight after 3 seconds
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
+        // Remove the highlight class
         if (element && document.body.contains(element)) {
-          element.style.outline = originalOutline || '';
-          element.style.boxShadow = originalBoxShadow || '';
-          setTimeout(() => {
-            element.style.transition = originalTransition || '';
-          }, 300);
+          element.classList.remove(highlightClass);
+
+          // Restore original inline styles if they existed
+          element.style.outline = originalStyles.outline || '';
+          element.style.boxShadow = originalStyles.boxShadow || '';
+          element.style.transition = originalStyles.transition || '';
         }
+
+        // Clean up the style element
+        if (styleEl && styleEl.parentNode) {
+          styleEl.parentNode.removeChild(styleEl);
+        }
+
+        // Clean up tracking
+        this.highlightedElements.delete(element);
+        this.highlightTimeouts.delete(timeoutId);
       }, 3000);
+
+      // Track the timeout for cleanup
+      this.highlightedElements.set(element, timeoutId);
+      this.highlightTimeouts.add(timeoutId);
+    }
+
+    // Add cleanup method
+    cleanupHighlights() {
+      // Clear all pending timeouts
+      for (const timeoutId of this.highlightTimeouts) {
+        clearTimeout(timeoutId);
+      }
+      this.highlightTimeouts.clear();
+
+      // Remove any lingering highlight classes
+      const highlightedElements = document.querySelectorAll('[class*="mosqit-error-highlight-"]');
+      highlightedElements.forEach(element => {
+        const classes = Array.from(element.classList);
+        classes.forEach(className => {
+          if (className.startsWith('mosqit-error-highlight-')) {
+            element.classList.remove(className);
+          }
+        });
+      });
+
+      // Remove any lingering style elements
+      const styleElements = document.querySelectorAll('style');
+      styleElements.forEach(style => {
+        if (style.textContent && style.textContent.includes('mosqit-error-highlight-')) {
+          style.parentNode?.removeChild(style);
+        }
+      });
     }
 
     detectDependencies() {
@@ -1075,6 +1166,49 @@
 
   // Initialize Mosqit only in browser environment
   if (typeof window !== 'undefined') {
+    // First, clean up any existing highlights from previous sessions
+    const cleanupExistingHighlights = () => {
+      // Remove any lingering highlight classes
+      const highlightedElements = document.querySelectorAll('[class*="mosqit-error-highlight-"]');
+      highlightedElements.forEach(element => {
+        const classes = Array.from(element.classList);
+        classes.forEach(className => {
+          if (className.startsWith('mosqit-error-highlight-')) {
+            element.classList.remove(className);
+          }
+        });
+        // Also reset inline styles that might be stuck
+        element.style.outline = '';
+        element.style.boxShadow = '';
+      });
+
+      // Remove any lingering style elements
+      const styleElements = document.querySelectorAll('style');
+      styleElements.forEach(style => {
+        if (style.textContent && style.textContent.includes('mosqit-error-highlight-')) {
+          style.parentNode?.removeChild(style);
+        }
+      });
+
+      // Also clean any elements that might have inline red borders
+      const elementsWithRedBorder = document.querySelectorAll('[style*="ff4444"], [style*="255, 68, 68"]');
+      elementsWithRedBorder.forEach(element => {
+        element.style.outline = '';
+        element.style.boxShadow = '';
+      });
+    };
+
+    // Run cleanup immediately
+    cleanupExistingHighlights();
+
+    // Also run after DOM is fully loaded
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', cleanupExistingHighlights);
+    } else {
+      // DOM is already loaded, run again just in case
+      setTimeout(cleanupExistingHighlights, 100);
+    }
+
     window.mosqitLogger = new MosqitLogger();
 
     // Expose to page for testing
@@ -1082,7 +1216,8 @@
       getLogs: () => window.mosqitLogger.getLogs(),
       getErrorPatterns: () => window.mosqitLogger.getErrorPatterns(),
       clearLogs: () => window.mosqitLogger.clearLogs(),
-      aiAvailable: () => window.mosqitLogger.aiAvailable
+      aiAvailable: () => window.mosqitLogger.aiAvailable,
+      cleanupHighlights: () => window.mosqitLogger.cleanupHighlights()
     };
   }
 

@@ -96,6 +96,8 @@ const devToolsConnections = new Map();
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log('[Mosqit Background] Received message:', message.type, 'from tab:', sender.tab?.id);
 
+  // CDP removed - not needed for native inspector
+
   if (message.type === 'MOSQIT_LOG') {
     const tabId = sender.tab?.id;
     console.log('[Mosqit Background] Processing log from tab:', tabId);
@@ -272,19 +274,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     });
 
     return true; // Keep channel open for async response
-  } else if (message.type === 'INJECT_VISUAL_BUG_REPORTER') {
+  } else if (message.type === 'INJECT_NATIVE_INSPECTOR') {
     const tabId = message.tabId;
 
-    // First check if Visual Bug Reporter is already injected in MAIN world
+    // Check if native inspector is already injected
     chrome.scripting.executeScript({
       target: { tabId: tabId },
       func: () => {
-        return typeof window.mosqitVisualBugReporter !== 'undefined';
+        return typeof window.mosqitNativeInspector !== 'undefined';
       },
       world: 'MAIN'
     }, (results) => {
       if (chrome.runtime.lastError) {
-        console.error('[Mosqit Background] Failed to check Visual Bug Reporter:', chrome.runtime.lastError);
+        console.error('[Mosqit Background] Failed to check Native Inspector:', chrome.runtime.lastError);
         sendResponse({ success: false, error: chrome.runtime.lastError.message });
         return;
       }
@@ -292,20 +294,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       const isAlreadyInjected = results && results[0]?.result;
 
       if (isAlreadyInjected) {
-        console.log('[Mosqit Background] Visual Bug Reporter already injected');
+        console.log('[Mosqit Background] Native Inspector already injected');
         sendResponse({ success: true, alreadyInjected: true });
       } else {
-        // Inject the Visual Bug Reporter script into MAIN world
+        // Inject the Native Inspector script into MAIN world
         chrome.scripting.executeScript({
           target: { tabId: tabId },
-          files: ['visual-bug-reporter.js'],
+          files: ['content/native-inspector.js'],
           world: 'MAIN'
         }, () => {
           if (chrome.runtime.lastError) {
-            console.error('[Mosqit Background] Failed to inject Visual Bug Reporter:', chrome.runtime.lastError);
+            console.error('[Mosqit Background] Failed to inject Native Inspector:', chrome.runtime.lastError);
             sendResponse({ success: false, error: chrome.runtime.lastError.message });
           } else {
-            console.log('[Mosqit Background] Visual Bug Reporter injected successfully');
+            console.log('[Mosqit Background] Native Inspector injected successfully');
             sendResponse({ success: true });
           }
         });
@@ -313,6 +315,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     });
 
     return true; // Keep channel open for async response
+  // Visual Bug Reporter removed - using native-inspector.js instead
   }
   return true;
 });
@@ -678,19 +681,29 @@ if (fs.existsSync(devtoolsDir)) {
   console.warn('⚠️ DevTools directory not found');
 }
 
-// Copy Visual Bug Reporter files
+// Copy content files
 const contentDir = path.join(srcDir, 'content');
-const visualBugReporter = path.join(contentDir, 'visual-bug-reporter.js');
-if (fs.existsSync(visualBugReporter)) {
-  fs.copyFileSync(visualBugReporter, path.join(extensionDir, 'visual-bug-reporter.js'));
-  console.log('✅ Visual Bug Reporter copied');
-}
 
+// Keep annotation canvas for screenshot editing
 const annotationCanvas = path.join(contentDir, 'annotation-canvas.js');
 if (fs.existsSync(annotationCanvas)) {
   fs.copyFileSync(annotationCanvas, path.join(extensionDir, 'annotation-canvas.js'));
   console.log('✅ Annotation Canvas copied');
 }
+
+// Copy Native Inspector
+const nativeInspector = path.join(contentDir, 'native-inspector.js');
+if (fs.existsSync(nativeInspector)) {
+  // Create content subdirectory in dist
+  const distContentDir = path.join(extensionDir, 'content');
+  if (!fs.existsSync(distContentDir)) {
+    fs.mkdirSync(distContentDir, { recursive: true });
+  }
+  fs.copyFileSync(nativeInspector, path.join(distContentDir, 'native-inspector.js'));
+  console.log('✅ Native Inspector copied');
+}
+
+// CDP Handler removed - not needed anymore
 
 console.log('\n🎉 Build complete!');
 console.log(`📁 Extension ready at: ${extensionDir}`);

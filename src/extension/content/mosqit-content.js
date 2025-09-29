@@ -424,29 +424,6 @@
 
         if (!this.writerSession) return this.analyzeWithPatterns(metadata);
 
-        // Build context-rich prompt
-        let contextInfo = '';
-
-        // Add user action context
-        if (metadata.userAction) {
-          contextInfo += `User Action: ${metadata.userAction}\n`;
-        }
-
-        // Add recent action history
-        if (metadata.actionHistory && metadata.actionHistory.length > 0) {
-          contextInfo += `Recent Actions: ${metadata.actionHistory.map(a => a.action).join(' → ')}\n`;
-        }
-
-        // Add recent logs context
-        if (metadata.recentLogs && metadata.recentLogs.length > 0) {
-          const recentMessages = metadata.recentLogs.map(log => `${log.level}: ${log.message.substring(0, 50)}`).join(' | ');
-          contextInfo += `Recent Logs: ${recentMessages}\n`;
-        }
-
-        // Add related error info
-        if (metadata.relatedToLastError && metadata.previousError) {
-          contextInfo += `Previous Error (related): ${metadata.previousError.substring(0, 100)}\n`;
-        }
 
         // Simplify prompt to avoid AI quality rejection
         const errorCore = metadata.message.substring(0, 150);

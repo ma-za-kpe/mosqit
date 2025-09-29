@@ -981,92 +981,118 @@ ${this.escapeHtml(this.formatHTML(snapshot.html))}
   }
 
   startVisualCapture() {
-    console.log('[Mosqit] Starting visual capture mode...');
+    console.log('[Mosqit] Starting element capture mode...');
 
     // Check if context is still valid
     try {
       // Get the inspected tab ID
       const tabId = chrome.devtools.inspectedWindow.tabId;
 
-      // First, request background script to inject the Visual Bug Reporter
-      chrome.runtime.sendMessage({
-        type: 'INJECT_VISUAL_BUG_REPORTER',
-        tabId: tabId
-      }, (response) => {
-        if (chrome.runtime.lastError) {
-          const error = chrome.runtime.lastError.message;
-          console.error('[Mosqit] Failed to inject Visual Bug Reporter:', error);
-
-          if (error.includes('context invalidated')) {
-            this.updateCaptureStatus('Extension reloaded. Please close and reopen DevTools.');
-          } else {
-            this.updateCaptureStatus('Error: Failed to inject. Please refresh the page.');
-          }
-          return;
-        }
-
-        if (response?.success) {
-          // The content-bridge should already be injected via manifest
-          // But we need to ensure it's ready to receive messages
-
-          // First, try to inject/re-inject the bridge to ensure it's there
-          console.log('[Mosqit] Ensuring content bridge is ready...');
-
-          // Use the background script to inject the bridge
-          chrome.runtime.sendMessage({
-            type: 'INJECT_CONTENT_BRIDGE',
-            tabId: tabId
-          }, (bridgeResponse) => {
-            if (chrome.runtime.lastError) {
-              console.error('[Mosqit] Failed to inject bridge via background:', chrome.runtime.lastError);
-            }
-
-            // Wait a bit for scripts to initialize
-            setTimeout(() => {
-              console.log('[Mosqit] Attempting to send START_VISUAL_BUG_REPORT to tab:', tabId);
-
-              // Try sending the message
-              chrome.tabs.sendMessage(tabId, {
-                type: 'START_VISUAL_BUG_REPORT'
-              }, (response) => {
-                if (chrome.runtime.lastError) {
-                  console.error('[Mosqit] Failed to start capture:', chrome.runtime.lastError);
-                  console.error('[Mosqit] Error details:', chrome.runtime.lastError.message);
-
-                  // Fallback: Try to start it directly via eval
-                  chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
-                    if (tabs[0] && tabs[0].id === tabId) {
-                      chrome.debugger.attach({tabId: tabId}, '1.0', () => {
-                        if (chrome.runtime.lastError) {
-                          console.error('[Mosqit] Cannot use debugger:', chrome.runtime.lastError);
-                          this.updateCaptureStatus('Error: Please refresh page and try again.');
-                        } else {
-                          // Detach immediately, we just wanted to check
-                          chrome.debugger.detach({tabId: tabId});
-                          this.updateCaptureStatus('Visual capture mode activating...');
-                        }
-                      });
-                    }
-                  });
-                } else if (response?.success) {
-                  console.log('[Mosqit] Visual capture started successfully');
-                  this.updateCaptureStatus('Capture mode active - click an element on the page');
-                } else {
-                  console.log('[Mosqit] Message sent but no proper response:', response);
-                  this.updateCaptureStatus('Visual capture mode activated - hover over elements');
-                }
-              });
-            }, 200);
-          });
-        } else {
-          this.updateCaptureStatus('Error: ' + (response?.error || 'Failed to inject bug reporter.'));
-        }
-      });
+      // Use our native inspector (no CDP needed)
+      this.startNativeInspector(tabId);
     } catch (error) {
       console.error('[Mosqit] Error in startVisualCapture:', error);
       this.updateCaptureStatus('Error: Extension context lost. Please reload DevTools.');
     }
   }
+
+  startNativeInspector(tabId) {
+    console.log('[Mosqit] Starting native inspector for tab:', tabId);
+
+    // Inject the native inspector script
+    chrome.runtime.sendMessage({
+      type: 'INJECT_NATIVE_INSPECTOR',
+      tabId: tabId
+    }, (response) => {
+      if (chrome.runtime.lastError) {
+        console.error('[Mosqit] Failed to inject native inspector:', chrome.runtime.lastError);
+        this.updateCaptureStatus('Error: Failed to inject inspector. Please refresh the page.');
+        return;
+      }
+
+      if (response?.success) {
+        // Wait a bit for the script to initialize
+        setTimeout(() => {
+          // Send start message to native inspector
+          chrome.tabs.sendMessage(tabId, {
+            type: 'START_NATIVE_INSPECT',
+            source: 'mosqit-devtools',
+            options: { multiSelect: false }
+          }, (response) => {
+            if (chrome.runtime.lastError) {
+              console.error('[Mosqit] Failed to start native inspect:', chrome.runtime.lastError);
+              console.error('[Mosqit] Error details:', chrome.runtime.lastError.message);
+
+              // More specific error messages
+              if (chrome.runtime.lastError.message.includes('Receiving end does not exist')) {
+                this.updateCaptureStatus('Error: Content script not loaded. Please refresh the page and try again.');
+              } else if (chrome.runtime.lastError.message.includes('context invalidated')) {
+                this.updateCaptureStatus('Error: Extension was reloaded. Please close and reopen DevTools.');
+              } else {
+                this.updateCaptureStatus('Error: ' + chrome.runtime.lastError.message);
+              }
+
+              // No fallback - native inspector should work
+            } else if (response?.success) {
+              console.log('[Mosqit] Native inspect started successfully');
+              this.updateCaptureStatus('Click an element on the page to capture');
+            } else {
+              console.log('[Mosqit] Native inspect response:', response);
+              this.updateCaptureStatus('Inspect mode activated - click an element');
+            }
+          });
+        }, 500); // Give the script time to initialize
+
+        // Listen for element selection
+        if (!this.nativeInspectorListener) {
+          this.nativeInspectorListener = (event) => {
+            if (event.source !== window) return;
+
+            if (event.data?.source === 'mosqit-native-inspector') {
+              if (event.data.type === 'ELEMENT_SELECTED') {
+                console.log('[Mosqit] Element selected:', event.data.data);
+                this.handleFallbackElementSelection(event.data.data);
+              } else if (event.data.type === 'INSPECTION_COMPLETE') {
+                console.log('[Mosqit] Inspection complete:', event.data.data);
+                this.handleInspectionComplete(event.data.data);
+              }
+            }
+          };
+          window.addEventListener('message', this.nativeInspectorListener);
+        }
+      } else {
+        this.updateCaptureStatus('Error: ' + (response?.error || 'Failed to inject inspector.'));
+      }
+    });
+  }
+
+  handleFallbackElementSelection(elementData) {
+    console.log('[Mosqit] Processing fallback element selection:', elementData);
+
+    // Transform to bug data format
+    const bugData = {
+      element: elementData,
+      screenshot: null,
+      page: {
+        url: window.location.href,
+        title: document.title
+      },
+      timestamp: Date.now()
+    };
+
+    this.handleCapturedBug(bugData);
+  }
+
+  handleInspectionComplete(data) {
+    console.log('[Mosqit] Inspection completed with elements:', data.elements);
+
+    if (data.elements && data.elements.length > 0) {
+      // For now, use the first element
+      // Could be extended to handle multiple elements
+      this.handleFallbackElementSelection(data.elements[0]);
+    }
+  }
+
 
   updateCaptureStatus(message) {
     const captureSection = document.getElementById('vb-capture-section');
@@ -1517,7 +1543,7 @@ Page title: ${bugData.page?.title || document.title}
   async generateAITitle(context) {
     try {
       // Build a comprehensive context for AI analysis
-      const contextInfo = this.buildAIContext(context);
+      this.buildAIContext(context);
 
       // Use Chrome's built-in AI to generate title and description
       if (typeof window !== 'undefined' && window.ai?.languageModel) {
@@ -1565,7 +1591,7 @@ Return JSON format:
             title: result.title || this.formatIssueTitle('Visual Bug Report', context),
             enhancedDescription: result.enhancedDescription || context.userDescription
           };
-        } catch (parseError) {
+        } catch {
           console.warn('[Mosqit] Failed to parse AI response, using fallback');
           return this.generateFallbackTitle(context);
         }

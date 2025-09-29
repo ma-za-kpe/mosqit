@@ -104,6 +104,31 @@
     // Don't respond to other messages to avoid errors
   });
 
+  // Listen for Chrome extension messages and forward to MAIN world
+  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    console.log('[Mosqit Bridge] Received message from extension:', request.type);
+
+    // Forward native inspector commands to MAIN world
+    if (request.type === 'START_NATIVE_INSPECT') {
+      console.log('[Mosqit Bridge] Forwarding START_NATIVE_INSPECT to MAIN world');
+      window.postMessage({
+        source: 'mosqit-devtools',
+        type: 'START_NATIVE_INSPECT',
+        options: request.options
+      }, '*');
+      sendResponse({ success: true });
+      return true;
+    } else if (request.type === 'STOP_NATIVE_INSPECT') {
+      console.log('[Mosqit Bridge] Forwarding STOP_NATIVE_INSPECT to MAIN world');
+      window.postMessage({
+        source: 'mosqit-devtools',
+        type: 'STOP_NATIVE_INSPECT'
+      }, '*');
+      sendResponse({ success: true });
+      return true;
+    }
+  });
+
   // Notify MAIN world that bridge is ready
   window.postMessage({ type: 'MOSQIT_BRIDGE_READY' }, '*');
 

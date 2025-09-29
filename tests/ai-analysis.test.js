@@ -107,7 +107,7 @@ describe('AI Analysis Features', () => {
         enhancedDescription: 'Fallback description'
       });
 
-      const result = await panel.generateAITitle({
+      await panel.generateAITitle({
         userDescription: 'Test error'
       });
 

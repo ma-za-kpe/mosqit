@@ -24,6 +24,8 @@ const devToolsConnections = new Map();
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log('[Mosqit Background] Received message:', message.type, 'from tab:', sender.tab?.id);
 
+  // CDP removed - not needed for native inspector
+
   if (message.type === 'MOSQIT_LOG') {
     const tabId = sender.tab?.id;
     console.log('[Mosqit Background] Processing log from tab:', tabId);
@@ -200,19 +202,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     });
 
     return true; // Keep channel open for async response
-  } else if (message.type === 'INJECT_VISUAL_BUG_REPORTER') {
+  } else if (message.type === 'INJECT_NATIVE_INSPECTOR') {
     const tabId = message.tabId;
 
-    // First check if Visual Bug Reporter is already injected in MAIN world
+    // Check if native inspector is already injected
     chrome.scripting.executeScript({
       target: { tabId: tabId },
       func: () => {
-        return typeof window.mosqitVisualBugReporter !== 'undefined';
+        return typeof window.mosqitNativeInspector !== 'undefined';
       },
       world: 'MAIN'
     }, (results) => {
       if (chrome.runtime.lastError) {
-        console.error('[Mosqit Background] Failed to check Visual Bug Reporter:', chrome.runtime.lastError);
+        console.error('[Mosqit Background] Failed to check Native Inspector:', chrome.runtime.lastError);
         sendResponse({ success: false, error: chrome.runtime.lastError.message });
         return;
       }
@@ -220,20 +222,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       const isAlreadyInjected = results && results[0]?.result;
 
       if (isAlreadyInjected) {
-        console.log('[Mosqit Background] Visual Bug Reporter already injected');
+        console.log('[Mosqit Background] Native Inspector already injected');
         sendResponse({ success: true, alreadyInjected: true });
       } else {
-        // Inject the Visual Bug Reporter script into MAIN world
+        // Inject the Native Inspector script into MAIN world
         chrome.scripting.executeScript({
           target: { tabId: tabId },
-          files: ['visual-bug-reporter.js'],
+          files: ['content/native-inspector.js'],
           world: 'MAIN'
         }, () => {
           if (chrome.runtime.lastError) {
-            console.error('[Mosqit Background] Failed to inject Visual Bug Reporter:', chrome.runtime.lastError);
+            console.error('[Mosqit Background] Failed to inject Native Inspector:', chrome.runtime.lastError);
             sendResponse({ success: false, error: chrome.runtime.lastError.message });
           } else {
-            console.log('[Mosqit Background] Visual Bug Reporter injected successfully');
+            console.log('[Mosqit Background] Native Inspector injected successfully');
             sendResponse({ success: true });
           }
         });
@@ -241,6 +243,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     });
 
     return true; // Keep channel open for async response
+  // Visual Bug Reporter removed - using native-inspector.js instead
   }
   return true;
 });

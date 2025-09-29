@@ -1344,15 +1344,24 @@ ${this.escapeHtml(this.formatHTML(snapshot.html))}
     const recentErrors = this.collectRecentErrors().slice(0, 3); // Only top 3 errors
     const hasErrors = recentErrors.length > 0;
 
-    // Get AI analysis for recent errors
-    const aiAnalysis = await this.getAIAnalysisForErrors(recentErrors);
+    // Get AI analysis - first check if we already have it from content script
+    let aiAnalysis = null;
+
+    // Check if recent errors already have AI analysis from content script
+    if (recentErrors && recentErrors.length > 0 && recentErrors[0].analysis) {
+      console.log('[Mosqit] Using existing AI analysis from content script');
+      aiAnalysis = recentErrors[0].analysis;
+    } else {
+      // Try to generate new analysis (may fail in DevTools context)
+      aiAnalysis = await this.getAIAnalysisForBug(bugData, recentErrors);
+    }
 
     // Follow GitHub best practices for issue structure
     let body = `## Bug Description
 ${bugData.description}
 
 ## Expected Behavior
-${bugData.expected || 'Please describe what you expected to happen instead.'}
+${bugData.expected || 'The element should respond correctly to user interaction.'}
 
 ## Steps to Reproduce
 1. Navigate to \`${bugData.page?.url}\`
@@ -1366,7 +1375,7 @@ ${bugData.description}
 - **URL**: ${bugData.page?.url || window.location.href}
 - **Browser**: ${this.getBrowserInfo(bugData.page?.userAgent)}
 - **Viewport**: ${bugData.page?.viewport?.width}×${bugData.page?.viewport?.height}
-- **Element**: \`${bugData.element?.selector || 'N/A'}\`
+- **Element**: \`${bugData.element?.selector || 'No specific element selected'}\`
 - **Position**: (${Math.round(bugData.element?.position?.x || 0)}, ${Math.round(bugData.element?.position?.y || 0)})
 `;
 
@@ -1399,42 +1408,14 @@ ${stackLines}
     } else {
       body += `
 ## Console Errors
-No console errors captured at the time of this report.
+_No JavaScript errors detected in the console during bug capture._
+
+**Note**: This doesn't mean there's no bug - visual/UX issues often occur without console errors.
 `;
     }
 
-    // Screenshot section
-    if (bugData.screenshot) {
-      // For GitHub, we need to provide instructions since base64 images don't render
-      body += `
-## Screenshot
-<details>
-<summary>Click to see screenshot instructions</summary>
-
-A screenshot was captured for this issue. To include it in GitHub:
-
-### Option 1: Direct Upload (Recommended)
-1. Save the screenshot from Mosqit DevTools panel
-2. Drag and drop the image file into this GitHub issue
-3. GitHub will upload and insert the image automatically
-
-### Option 2: Manual Upload
-1. Right-click the screenshot in Mosqit DevTools
-2. Select "Save image as..."
-3. Click "Attach files" below this issue
-4. Select the saved screenshot file
-
-### Option 3: Use Placeholder
-Replace this line with your uploaded image:
-\`\`\`
-![Screenshot](upload-your-screenshot-here.png)
-\`\`\`
-
-</details>
-
-> **📸 Visual bug captured** - Screenshot available in Mosqit DevTools panel
-`;
-    }
+    // Screenshot is already displayed in the UI above, no need to duplicate it in the issue content
+    // The screenshot will be uploaded and inserted when actually submitting to GitHub
 
     // AI Analysis section
     if (aiAnalysis && aiAnalysis.length > 0) {
@@ -1445,7 +1426,18 @@ ${aiAnalysis}
     } else {
       body += `
 ## AI Analysis
-No specific AI analysis available. Please ensure console errors are present for detailed analysis.
+🤖 **Visual/UX Bug Detected**
+
+While no JavaScript errors were found, the reported issue appears to be related to:
+• Visual rendering or styling
+• User interaction behavior
+• Element positioning or visibility
+
+**Recommended debugging steps:**
+1. Inspect element CSS for display/visibility issues
+2. Check event listeners on the element
+3. Verify responsive design breakpoints
+4. Test browser compatibility
 `;
     }
 
@@ -1541,14 +1533,33 @@ Page title: ${bugData.page?.title || document.title}
   }
 
   async generateAITitle(context) {
+    console.log('[Mosqit] Attempting to generate AI title...');
     try {
       // Build a comprehensive context for AI analysis
       this.buildAIContext(context);
 
-      // Use Chrome's built-in AI to generate title and description
-      if (typeof window !== 'undefined' && window.ai?.languageModel) {
-        const session = await window.ai.languageModel.create({
-          systemPrompt: `You are a GitHub issue expert. Generate a concise, descriptive bug report title and enhanced description.
+      let session = null;
+      let aiType = null;
+
+      // Try Chrome AI Assistant first
+      if (typeof window !== 'undefined' && window.ai?.assistant) {
+        try {
+          const capabilities = await window.ai.assistant.capabilities();
+          if (capabilities.available === 'readily') {
+            session = await window.ai.assistant.create();
+            aiType = 'assistant';
+            console.log('[Mosqit] Using Assistant for title generation');
+          }
+        } catch (e) {
+          console.log('[Mosqit] Assistant not available for title:', e.message);
+        }
+      }
+
+      // Try Language Model API
+      if (!session && window.ai?.languageModel) {
+        try {
+          session = await window.ai.languageModel.create({
+            systemPrompt: `You are a GitHub issue expert. Generate a concise, descriptive bug report title and enhanced description.
 
 Rules:
 - Title: 50-80 characters, specific and actionable
@@ -1564,9 +1575,20 @@ Example good titles:
 - [Bug]: API timeout causes blank dashboard on load
 
 Context will include: user description, element selector, console errors, page URL, impact level.`
-        });
+          });
+          aiType = 'languageModel';
+          console.log('[Mosqit] Using Language Model for title generation');
+        } catch (e) {
+          console.log('[Mosqit] Language Model not available for title:', e.message);
+        }
+      }
 
-        const prompt = `Generate a GitHub issue title and enhanced description for this bug:
+      if (!session) {
+        console.log('[Mosqit] No AI available for title generation');
+        return this.generateFallbackTitle(context);
+      }
+
+      const prompt = `Generate a GitHub issue title and enhanced description for this bug:
 
 User Description: "${context.userDescription}"
 Expected: "${context.expected || 'Not specified'}"
@@ -1582,21 +1604,24 @@ Return JSON format:
   "enhancedDescription": "Enhanced description with technical details"
 }`;
 
-        const response = await session.prompt(prompt);
-        await session.destroy();
-
-        try {
-          const result = JSON.parse(response);
-          return {
-            title: result.title || this.formatIssueTitle('Visual Bug Report', context),
-            enhancedDescription: result.enhancedDescription || context.userDescription
-          };
-        } catch {
-          console.warn('[Mosqit] Failed to parse AI response, using fallback');
+        let response;
+        if (aiType === 'assistant' || aiType === 'languageModel') {
+          response = await session.prompt(prompt);
+          if (session.destroy) await session.destroy();
+        } else {
+          // Writer API doesn't support JSON format well, use fallback
+          console.log('[Mosqit] Writer API not suitable for title generation');
           return this.generateFallbackTitle(context);
         }
-      } else {
-        // Fallback when AI is not available
+
+      try {
+        const result = JSON.parse(response);
+        return {
+          title: result.title || this.formatIssueTitle('Visual Bug Report', context),
+          enhancedDescription: result.enhancedDescription || context.userDescription
+        };
+      } catch {
+        console.warn('[Mosqit] Failed to parse AI response, using fallback');
         return this.generateFallbackTitle(context);
       }
     } catch (error) {
@@ -1736,27 +1761,197 @@ Return JSON format:
   }
 
   formatIssueTitle(rawTitle, bugData) {
+    // Check if title already has [Bug]: prefix
+    if (rawTitle.startsWith('[Bug]:')) {
+      return rawTitle; // Already formatted, return as-is
+    }
+
     // Follow GitHub best practices: [Bug]: Descriptive title
     const description = bugData?.description || rawTitle;
 
     // Extract key information for a descriptive title
-    let title = description.length > 60 ?
-      description.substring(0, 60) + '...' :
+    let title = description.length > 80 ?
+      description.substring(0, 77) + '...' : // Leave room for [Bug]: prefix
       description;
 
     // Clean up title - remove line breaks and extra spaces
     title = title.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
 
-    // Add element context if available
+    // Only add element context if not already mentioned in the title
     const element = bugData?.element?.selector;
-    if (element && element !== 'N/A') {
+    if (element && element !== 'No specific element selected' && !title.toLowerCase().includes(element.toLowerCase())) {
       const shortElement = element.length > 20 ?
         element.substring(0, 20) + '...' :
         element;
-      title += ` (${shortElement})`;
+
+      // Only add if there's room
+      if (title.length + shortElement.length < 70) {
+        title += ` (${shortElement})`;
+      }
     }
 
     return `[Bug]: ${title}`;
+  }
+
+  async getAIAnalysisForBug(bugData, errors) {
+    console.log('[Mosqit] Attempting AI analysis for bug...');
+
+    // Try to analyze the complete bug context, not just errors
+    try {
+      // Check for available AI APIs - try multiple options
+      let session = null;
+      let aiType = null;
+
+      // Try Chrome AI Assistant (Prompt API)
+      if (typeof window !== 'undefined' && window.ai?.assistant) {
+        console.log('[Mosqit] Trying Chrome AI Assistant...');
+        try {
+          const capabilities = await window.ai.assistant.capabilities();
+          if (capabilities.available === 'readily') {
+            session = await window.ai.assistant.create();
+            aiType = 'assistant';
+            console.log('[Mosqit] Using Chrome AI Assistant');
+          }
+        } catch (e) {
+          console.log('[Mosqit] Assistant not available:', e.message);
+        }
+      }
+
+      // Try Language Model API (newer name)
+      if (!session && window.ai?.languageModel) {
+        console.log('[Mosqit] Trying Language Model API...');
+        try {
+          session = await window.ai.languageModel.create({
+            systemPrompt: `You are a debugging expert. Analyze bug reports and provide actionable insights.`
+          });
+          aiType = 'languageModel';
+          console.log('[Mosqit] Using Language Model API');
+        } catch (e) {
+          console.log('[Mosqit] Language Model not available:', e.message);
+        }
+      }
+
+      // Try Writer API as fallback
+      if (!session && window.ai?.writer) {
+        console.log('[Mosqit] Trying Writer API...');
+        try {
+          const capabilities = await window.ai.writer.capabilities();
+          console.log('[Mosqit] Writer capabilities:', capabilities);
+
+          if (capabilities.available === 'readily' || capabilities.available === 'available') {
+            // Store as class property for reuse
+            if (!this.writerSession) {
+              this.writerSession = await window.ai.writer.create({
+                tone: 'neutral',
+                format: 'plain-text',
+                length: 'medium',
+                sharedContext: 'You are Mosqit, a debugging assistant analyzing bug reports.'
+              });
+              console.log('[Mosqit] Created new Writer session');
+            }
+            session = this.writerSession;
+            aiType = 'writer';
+            console.log('[Mosqit] Using Writer API for bug analysis');
+          } else if (capabilities.available === 'after-download') {
+            console.log('[Mosqit] Writer API requires model download');
+          }
+        } catch (e) {
+          console.log('[Mosqit] Writer not available:', e.message);
+        }
+      }
+
+      if (!session) {
+        console.log('[Mosqit] No AI APIs available. Check chrome://flags/#prompt-api-for-gemini-nano');
+        // Continue to fallback analysis below
+      } else {
+        // Build comprehensive context
+        const bugContext = `
+Bug Description: ${bugData.description || 'Visual/interaction issue'}
+Expected Behavior: ${bugData.expected || 'Element should work correctly'}
+Element Selector: ${bugData.element?.selector || 'Not specified'}
+Element Type: ${bugData.element?.tagName || 'Unknown'}
+Element Size: ${bugData.element?.position?.width}x${bugData.element?.position?.height}px
+Page URL: ${bugData.page?.url || 'Unknown'}
+Has Console Errors: ${errors && errors.length > 0 ? 'Yes (' + errors.length + ' errors)' : 'No'}
+${errors && errors.length > 0 ? 'Primary Error: ' + errors[0].message : ''}
+
+Analyze this bug and provide:
+1. Most likely root cause (1-2 sentences)
+2. Specific debugging steps (2-3 bullet points)
+3. Potential fix (1-2 sentences)
+Keep response under 150 words.`;
+
+        let response = null;
+
+        // Use appropriate method based on API type
+        if (aiType === 'assistant' || aiType === 'languageModel') {
+          response = await session.prompt(bugContext);
+        } else if (aiType === 'writer') {
+          response = await session.write(bugContext);
+        }
+
+        if (response && response.length > 10) {
+          console.log('[Mosqit] AI analysis successful');
+          return `🤖 **AI Analysis**\n\n${response.trim()}`;
+        }
+      }
+    } catch (error) {
+      console.error('[Mosqit] AI bug analysis failed:', error);
+    }
+
+    // If AI analysis fails or no AI available, still analyze errors if present
+    if (errors && errors.length > 0) {
+      return this.getAIAnalysisForErrors(errors);
+    }
+
+    // Fallback for visual/UX bugs without errors
+    return this.generateContextualAnalysis(bugData);
+  }
+
+  generateContextualAnalysis(bugData) {
+    const element = bugData.element;
+    let analysis = `🤖 **Automated Analysis**\n\n`;
+
+    // Analyze based on element type and description
+    if (element?.tagName) {
+      const tag = element.tagName.toLowerCase();
+
+      if (['button', 'a', 'input', 'select'].includes(tag)) {
+        analysis += `**Interactive Element Issue Detected**\n`;
+        analysis += `• Element type: ${tag}\n`;
+        analysis += `• Check if element is disabled or has pointer-events: none\n`;
+        analysis += `• Verify click/change event listeners are attached\n`;
+        analysis += `• Inspect z-index and overlapping elements\n`;
+      } else if (['div', 'section', 'article'].includes(tag)) {
+        analysis += `**Layout/Container Issue Detected**\n`;
+        analysis += `• Check CSS display and visibility properties\n`;
+        analysis += `• Verify responsive breakpoints\n`;
+        analysis += `• Inspect flexbox/grid properties\n`;
+      } else if (['img', 'video', 'picture'].includes(tag)) {
+        analysis += `**Media Element Issue Detected**\n`;
+        analysis += `• Verify resource URL is correct\n`;
+        analysis += `• Check loading state and error events\n`;
+        analysis += `• Inspect dimensions and aspect ratio\n`;
+      }
+    }
+
+    // Add description-based insights
+    const desc = (bugData.description || '').toLowerCase();
+    if (desc.includes('click') || desc.includes('tap')) {
+      analysis += `\n**Click/Tap Issue:**\n`;
+      analysis += `• Element might be covered by another element\n`;
+      analysis += `• JavaScript event handler might be missing\n`;
+    } else if (desc.includes('display') || desc.includes('show') || desc.includes('visible')) {
+      analysis += `\n**Visibility Issue:**\n`;
+      analysis += `• Check CSS display, visibility, and opacity\n`;
+      analysis += `• Verify element is in viewport\n`;
+    } else if (desc.includes('size') || desc.includes('responsive')) {
+      analysis += `\n**Sizing/Responsive Issue:**\n`;
+      analysis += `• Check media queries and breakpoints\n`;
+      analysis += `• Verify width/height constraints\n`;
+    }
+
+    return analysis;
   }
 
   async getAIAnalysisForErrors(errors) {
@@ -2091,9 +2286,10 @@ Memory Usage: ${this.getMemoryUsage()}
   async submitToGitHub() {
     console.log('[Mosqit] Preparing GitHub issue submission...');
 
-    // Get the generated issue content and create proper title
-    const rawTitle = document.querySelector('#vb-issue-content h3')?.textContent || 'Visual Bug Report';
-    const issueTitle = this.formatIssueTitle(rawTitle, this.capturedBug);
+    // Get the already AI-generated title (don't reformat it)
+    const issueTitle = document.querySelector('#vb-issue-content h3')?.textContent || '[Bug]: Visual Bug Report';
+
+    // Get the issue body
     const issueBody = document.querySelector('#vb-issue-content pre')?.textContent ||
                       document.querySelector('#vb-issue-content')?.textContent || '';
 
@@ -2297,6 +2493,88 @@ Memory Usage: ${this.getMemoryUsage()}
     });
   }
 
+  async uploadScreenshotToGitHub(settings, screenshot, issueNumber) {
+    if (!screenshot || !screenshot.startsWith('data:image')) {
+      console.log('[Mosqit] No valid screenshot to upload');
+      return null;
+    }
+
+    const [owner, repo] = settings.repo.split('/');
+
+    // Extract base64 content (remove data:image/png;base64, prefix)
+    const base64Content = screenshot.split(',')[1];
+
+    // Check size limit (GitHub has a 10MB limit for API uploads, but we'll be conservative)
+    const sizeInBytes = (base64Content.length * 3) / 4; // Approximate size
+    const sizeInMB = sizeInBytes / (1024 * 1024);
+    if (sizeInMB > 5) {
+      console.warn(`[Mosqit] Screenshot too large (${sizeInMB.toFixed(2)}MB). Skipping upload.`);
+      this.showToast('⚠️ Screenshot too large for upload (>5MB)', 'warning');
+      return null;
+    }
+
+    // Generate unique filename with timestamp
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const filename = `mosqit-screenshots/issue-${issueNumber || 'draft'}-${timestamp}.png`;
+
+    try {
+      // Upload image to repository
+      const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${filename}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `token ${settings.token}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          message: `Add screenshot for issue #${issueNumber || 'new'}`,
+          content: base64Content,
+          branch: 'main' // You might want to make this configurable
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Return the raw URL for embedding in markdown
+        const rawUrl = data.content.download_url;
+        console.log('[Mosqit] Screenshot uploaded successfully:', rawUrl);
+        return rawUrl;
+      } else {
+        const error = await response.json();
+        console.error('[Mosqit] Failed to upload screenshot:', error);
+
+        // If folder doesn't exist, try to create it first
+        if (error.message && error.message.includes('path')) {
+          console.log('[Mosqit] Attempting to create screenshots folder...');
+          // Try without folder first
+          const simpleFilename = `screenshot-${issueNumber || 'draft'}-${timestamp}.png`;
+          const retryResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${simpleFilename}`, {
+            method: 'PUT',
+            headers: {
+              'Authorization': `token ${settings.token}`,
+              'Accept': 'application/vnd.github.v3+json',
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              message: `Add screenshot for issue #${issueNumber || 'new'}`,
+              content: base64Content,
+              branch: 'main'
+            })
+          });
+
+          if (retryResponse.ok) {
+            const retryData = await retryResponse.json();
+            return retryData.content.download_url;
+          }
+        }
+        return null;
+      }
+    } catch (error) {
+      console.error('[Mosqit] Error uploading screenshot:', error);
+      return null;
+    }
+  }
+
   async createGitHubIssue(settings, title, body) {
     const [owner, repo] = settings.repo.split('/');
 
@@ -2304,14 +2582,52 @@ Memory Usage: ${this.getMemoryUsage()}
       throw new Error('Invalid repository format. Use: owner/repo');
     }
 
+    // First, try to upload the screenshot if available
+    let screenshotUrl = null;
+    if (this.capturedBug?.screenshot) {
+      this.updateProgressMessage('📸 Uploading screenshot...');
+      screenshotUrl = await this.uploadScreenshotToGitHub(settings, this.capturedBug.screenshot);
+
+      if (screenshotUrl) {
+        this.updateProgressMessage('✅ Screenshot uploaded successfully');
+      } else {
+        this.updateProgressMessage('⚠️ Screenshot upload failed, creating issue without image');
+      }
+    }
+
+    // Insert screenshot into body if upload was successful
+    let enhancedBody = body;
+    if (screenshotUrl) {
+      // Find the right place to insert the screenshot (after "Visual Context" or at the beginning)
+      const visualContextIndex = body.indexOf('## Visual Context');
+      if (visualContextIndex !== -1) {
+        // Insert after Visual Context heading
+        const insertPoint = body.indexOf('\n', visualContextIndex) + 1;
+        enhancedBody = body.slice(0, insertPoint) +
+          `\n### Screenshot\n![Bug Screenshot](${screenshotUrl})\n\n` +
+          body.slice(insertPoint);
+      } else {
+        // Insert after bug description
+        const descIndex = body.indexOf('## Expected Behavior');
+        if (descIndex !== -1) {
+          enhancedBody = body.slice(0, descIndex) +
+            `\n## Screenshot\n![Bug Screenshot](${screenshotUrl})\n\n` +
+            body.slice(descIndex);
+        } else {
+          // Fallback: add at the beginning
+          enhancedBody = `## Screenshot\n![Bug Screenshot](${screenshotUrl})\n\n${body}`;
+        }
+      }
+    }
+
     // Truncate body if it exceeds GitHub's limit (65536 characters)
     const MAX_BODY_LENGTH = 65000; // Leave some buffer
-    let truncatedBody = body;
-    if (body.length > MAX_BODY_LENGTH) {
+    let truncatedBody = enhancedBody;
+    if (enhancedBody.length > MAX_BODY_LENGTH) {
       // Keep the most important parts and add truncation notice
       const truncationNotice = '\n\n---\n*[Content truncated due to GitHub\'s 65536 character limit. Full details available in DevTools.]*';
-      truncatedBody = body.substring(0, MAX_BODY_LENGTH - truncationNotice.length) + truncationNotice;
-      console.warn('[Mosqit] Issue body truncated from', body.length, 'to', truncatedBody.length, 'characters');
+      truncatedBody = enhancedBody.substring(0, MAX_BODY_LENGTH - truncationNotice.length) + truncationNotice;
+      console.warn('[Mosqit] Issue body truncated from', enhancedBody.length, 'to', truncatedBody.length, 'characters');
     }
 
     try {

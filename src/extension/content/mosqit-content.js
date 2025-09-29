@@ -129,9 +129,20 @@
             this.aiCapabilities.prompt = true;
             console.info('[Mosqit] ✅ Chrome AI Prompt API (Gemini Nano) ready!');
           } else if (capabilities.available === 'after-download') {
-            console.info('[Mosqit] 📥 Gemini Nano model needs download');
-            // Optionally trigger download
-            // await window.ai.assistant.create();
+            console.info('[Mosqit] 📥 Triggering Gemini Nano model download...');
+            try {
+              // Actually trigger the download by creating a session
+              const testSession = await window.ai.assistant.create();
+              await testSession.destroy();
+              this.aiAvailable = true;
+              this.aiCapabilities.prompt = true;
+              console.info('[Mosqit] ✅ Chrome AI Prompt API model downloaded and ready!');
+            } catch (downloadError) {
+              console.warn('[Mosqit] Model download in progress or failed:', downloadError);
+              // Still mark as available since it might work later
+              this.aiAvailable = true;
+              this.aiCapabilities.prompt = true;
+            }
           }
         } catch (error) {
           console.debug('[Mosqit] Prompt API not available:', error);
@@ -139,13 +150,28 @@
       }
 
       // Check for Writer API - uses window.ai
-      if (typeof window.ai !== 'undefined' && window.ai?.writer) {
+      if (!this.aiAvailable && typeof window.ai !== 'undefined' && window.ai?.writer) {
         try {
           const capabilities = await window.ai.writer.capabilities();
+          console.info('[Mosqit] Writer API capabilities:', capabilities);
+
           if (capabilities.available === 'readily') {
             this.aiAvailable = true;
             this.aiCapabilities.writer = true;
             console.info('[Mosqit] ✅ Chrome AI Writer API ready!');
+          } else if (capabilities.available === 'after-download') {
+            console.info('[Mosqit] 📥 Triggering Writer model download...');
+            try {
+              const testWriter = await window.ai.writer.create();
+              await testWriter.destroy();
+              this.aiAvailable = true;
+              this.aiCapabilities.writer = true;
+              console.info('[Mosqit] ✅ Chrome AI Writer API model downloaded!');
+            } catch (downloadError) {
+              console.warn('[Mosqit] Writer model download in progress:', downloadError);
+              this.aiAvailable = true;
+              this.aiCapabilities.writer = true;
+            }
           }
         } catch (error) {
           console.debug('[Mosqit] Writer API not available:', error);
@@ -218,14 +244,38 @@
         }
       }
 
+      // Debug logging to see what's actually available
+      console.group('[Mosqit] 🔍 Chrome AI Detection Results');
+      console.log('window.ai exists?', typeof window.ai !== 'undefined');
+      if (window.ai) {
+        console.log('window.ai.assistant?', !!window.ai.assistant);
+        console.log('window.ai.writer?', !!window.ai.writer);
+        console.log('window.ai.languageModel?', !!window.ai.languageModel);
+        console.log('window.ai.summarizer?', !!window.ai.summarizer);
+      }
+      console.log('this.aiAvailable:', this.aiAvailable);
+      console.log('this.aiCapabilities:', this.aiCapabilities);
+      console.groupEnd();
+
       if (!this.aiAvailable) {
-        console.info('[Mosqit] ⚠️ Using pattern-based analysis (no AI)');
-        console.info('[Mosqit] Enable Chrome AI flags:');
-        console.info('[Mosqit] - chrome://flags/#prompt-api-for-gemini-nano');
-        console.info('[Mosqit] - chrome://flags/#summarization-api-for-gemini-nano');
-        console.info('[Mosqit] - chrome://flags/#optimization-guide-on-device-model');
+        console.warn('[Mosqit] ❌ Chrome AI NOT ACTIVE - Using fallback analysis');
+        console.info('[Mosqit] To enable AI:');
+        console.info('[Mosqit] 1. Go to chrome://flags');
+        console.info('[Mosqit] 2. Enable: #prompt-api-for-gemini-nano');
+        console.info('[Mosqit] 3. Enable: #optimization-guide-on-device-model');
+        console.info('[Mosqit] 4. Restart Chrome completely');
+
+        // Retry detection after delay
+        if (!this.aiRetryAttempted) {
+          this.aiRetryAttempted = true;
+          setTimeout(() => {
+            console.info('[Mosqit] 🔄 Retrying AI detection...');
+            this.checkChromeAI();
+          }, 3000);
+        }
       } else {
-        console.info('[Mosqit] AI Capabilities:', this.aiCapabilities);
+        console.info('[Mosqit] ✅ Chrome AI ACTIVE! Using real AI for analysis');
+        console.info('[Mosqit] Available APIs:', this.aiCapabilities);
       }
     }
 
@@ -426,32 +476,54 @@
 
       try {
         // Try Prompt API first (most powerful)
-        if (this.aiCapabilities.prompt) {
+        if (this.aiCapabilities.prompt && window.ai?.assistant) {
+          console.log('[Mosqit] Using Prompt API for analysis');
           if (!this.promptSession) {
-            this.promptSession = await window.ai.assistant.create({
-              systemPrompt: 'You are a debugging assistant. Give short, specific fixes.'
-            });
+            try {
+              this.promptSession = await window.ai.assistant.create();
+              console.log('[Mosqit] Created assistant session');
+            } catch (e) {
+              console.warn('[Mosqit] Failed to create assistant session:', e);
+              this.aiCapabilities.prompt = false;
+            }
           }
-          // Use simpler prompt to avoid quality rejection
-          const errorType = this.getErrorType(metadata.message);
-          const prompt = `${errorType}: ${metadata.message.substring(0, 100)}\nSuggest fix`;
-          const response = await this.promptSession.prompt(prompt);
-          return `🤖 ${response.substring(0, 200)}`;
+
+          if (this.promptSession) {
+            const errorType = this.getErrorType(metadata.message);
+            const prompt = `Analyze this ${errorType}: ${metadata.message.substring(0, 200)}\nFile: ${metadata.file}\nProvide: 1) Root cause 2) Quick fix`;
+
+            try {
+              const response = await this.promptSession.prompt(prompt);
+              console.log('[Mosqit] AI response received');
+              return `🤖 ${response.substring(0, 300)}`;
+            } catch (e) {
+              console.warn('[Mosqit] Prompt failed:', e);
+              this.promptSession = null;
+            }
+          }
         }
 
         // Fall back to Writer API if available
-        if (!this.writerSession && (this.aiCapabilities.writer || this.aiCapabilities.legacyWriter)) {
-          if (this.aiCapabilities.writer) {
+        if (!this.writerSession && this.aiCapabilities.writer && window.ai?.writer) {
+          console.log('[Mosqit] Trying Writer API for analysis');
+          try {
             this.writerSession = await window.ai.writer.create({
-              tone: 'formal',
+              tone: 'neutral',
               format: 'plain-text',
-              length: 'short'
+              length: 'medium',
+              sharedContext: 'You are a debugging assistant analyzing JavaScript errors.'
             });
+            console.log('[Mosqit] Created writer session');
+          } catch (e) {
+            console.warn('[Mosqit] Failed to create writer session:', e);
+            this.aiCapabilities.writer = false;
           }
-          // legacyWriter session already created in checkChromeAI
         }
 
-        if (!this.writerSession) return this.analyzeWithPatterns(metadata);
+        if (!this.writerSession && !this.promptSession) {
+          console.log('[Mosqit] No AI sessions available, using patterns');
+          return this.analyzeWithPatterns(metadata);
+        }
 
 
         // Simplify prompt to avoid AI quality rejection

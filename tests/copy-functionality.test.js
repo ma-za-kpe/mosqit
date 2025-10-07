@@ -91,7 +91,7 @@ describe('Copy Functionality', () => {
         writeText: jest.fn().mockResolvedValue()
       };
 
-      const result = await panel.copyIssueContent();
+      await panel.copyIssueContent();
 
       expect(mockNavigator.clipboard.writeText).toHaveBeenCalledWith('## Bug Report\nTest content');
     });

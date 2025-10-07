@@ -6,15 +6,25 @@
 (function() {
   'use strict';
 
-  console.log('[Mosqit] 🦟 Initializing debugging assistant...');
+  // DEBUG MODE: Set to false for production (silences all Mosqit console logs)
+  const DEBUG = false;
+
+  if (DEBUG) console.log('[Mosqit] 🦟 Initializing debugging assistant...');
 
   class MosqitLogger {
     constructor() {
+      this.DEBUG = DEBUG;
       this.logs = [];
       this.maxLogs = 1000;
       this.aiAvailable = false;
+
+      // Debug logger helpers
+      this._log = (...args) => { if (this.DEBUG) console.log(...args); };
+      this._warn = (...args) => { if (this.DEBUG) console.warn(...args); };
+      this._debug = (...args) => { if (this.DEBUG) console.debug(...args); };
       this.writerSession = null;
       this.errorPatterns = new Map();
+      this.maxErrorPatterns = 100; // MEMORY FIX: Limit pattern tracking
 
       // Context tracking
       this.recentLogs = []; // Last 10 logs before an error
@@ -30,6 +40,22 @@
       this.highlightedElements = new WeakMap();
       this.highlightTimeouts = new Set();
 
+      // MEMORY FIX: Track resources for cleanup
+      this.eventListeners = []; // Store all event listeners for removal
+      this.intervals = []; // Store all intervals for clearing
+      this.timeouts = []; // Store all timeouts for clearing
+      this.isDestroyed = false; // Track if logger has been destroyed
+
+      // PERFORMANCE FIX: AI rate limiting to prevent quota exhaustion
+      this.aiCallQueue = [];
+      this.activeAICalls = 0;
+      this.maxConcurrentAICalls = 2; // Max 2 AI calls at once
+      this.aiCallsPerMinute = 0;
+      this.maxAICallsPerMinute = 10; // Max 10 AI calls per minute
+      this.aiCallTimestamps = [];
+      this.lastAICallTime = 0;
+      this.minAICallInterval = 100; // Minimum 100ms between AI calls
+
       this.init();
     }
 
@@ -39,70 +65,87 @@
       this.setupErrorListener();
       this.setupUserActionTracking();
       this.setupCleanupHandlers();
-      console.log('[Mosqit] ✅ Logger initialized');
+      this._log('[Mosqit] ✅ Logger initialized');
+    }
+
+    // MEMORY FIX: Helper to add tracked event listeners
+    addTrackedEventListener(target, event, handler, options) {
+      target.addEventListener(event, handler, options);
+      this.eventListeners.push({ target, event, handler, options });
     }
 
     setupCleanupHandlers() {
-      // Clean up on page unload
-      window.addEventListener('beforeunload', () => {
-        this.cleanupHighlights();
-      });
+      // MEMORY FIX: Track all event listeners and intervals for cleanup
+      const beforeUnloadHandler = () => {
+        this.destroy(); // Call full cleanup on unload
+      };
+      this.addTrackedEventListener(window, 'beforeunload', beforeUnloadHandler);
 
       // Clean up on page hide (for mobile/tab switching)
-      document.addEventListener('visibilitychange', () => {
+      const visibilityHandler = () => {
         if (document.hidden) {
           this.cleanupHighlights();
         }
-      });
+      };
+      this.addTrackedEventListener(document, 'visibilitychange', visibilityHandler);
 
       // Clean up on navigation (SPA)
-      window.addEventListener('popstate', () => {
+      const popstateHandler = () => {
         this.cleanupHighlights();
-      });
+      };
+      this.addTrackedEventListener(window, 'popstate', popstateHandler);
 
-      // Also run cleanup periodically to catch any orphaned highlights
-      setInterval(() => {
-        this.cleanupHighlights();
+      // MEMORY FIX: Run cleanup periodically but track the interval
+      const cleanupIntervalId = setInterval(() => {
+        if (!this.isDestroyed) {
+          this.cleanupHighlights();
+        }
       }, 10000); // Every 10 seconds
+      this.intervals.push(cleanupIntervalId);
     }
 
     setupUserActionTracking() {
       // Store last interacted element
       this.lastInteractedElement = null;
 
-      // Track clicks
-      document.addEventListener('click', (e) => {
+      // MEMORY FIX: Track all event listeners for cleanup
+      const clickHandler = (e) => {
+        if (this.isDestroyed) return;
         const target = e.target;
         this.lastInteractedElement = target;
         const identifier = target.id || target.className || target.tagName;
         const text = target.textContent?.substring(0, 30) || '';
         this.lastUserAction = `Clicked: ${identifier} "${text.trim()}"`;
         this.addToActionHistory(this.lastUserAction);
-      }, true);
+      };
+      this.addTrackedEventListener(document, 'click', clickHandler, true);
 
-      // Track form submissions
-      document.addEventListener('submit', (e) => {
+      const submitHandler = (e) => {
+        if (this.isDestroyed) return;
         const form = e.target;
         const identifier = form.id || form.className || 'form';
         this.lastUserAction = `Submitted form: ${identifier}`;
         this.addToActionHistory(this.lastUserAction);
-      }, true);
+      };
+      this.addTrackedEventListener(document, 'submit', submitHandler, true);
 
-      // Track input changes
-      document.addEventListener('change', (e) => {
+      const changeHandler = (e) => {
+        if (this.isDestroyed) return;
         const target = e.target;
         if (target.tagName === 'INPUT' || target.tagName === 'SELECT') {
           const identifier = target.id || target.name || target.type;
           this.lastUserAction = `Changed input: ${identifier}`;
           this.addToActionHistory(this.lastUserAction);
         }
-      }, true);
+      };
+      this.addTrackedEventListener(document, 'change', changeHandler, true);
 
-      // Track page navigation
-      window.addEventListener('popstate', () => {
+      const navHandler = () => {
+        if (this.isDestroyed) return;
         this.lastUserAction = `Navigated to: ${window.location.pathname}`;
         this.addToActionHistory(this.lastUserAction);
-      });
+      };
+      this.addTrackedEventListener(window, 'popstate', navHandler);
     }
 
     addToActionHistory(action) {
@@ -138,14 +181,14 @@
               this.aiCapabilities.prompt = true;
               console.info('[Mosqit] ✅ Chrome AI Prompt API model downloaded and ready!');
             } catch (downloadError) {
-              console.warn('[Mosqit] Model download in progress or failed:', downloadError);
+              if (this.DEBUG) console.warn('[Mosqit] Model download in progress or failed:', downloadError);
               // Still mark as available since it might work later
               this.aiAvailable = true;
               this.aiCapabilities.prompt = true;
             }
           }
         } catch (error) {
-          console.debug('[Mosqit] Prompt API not available:', error);
+          this._debug('[Mosqit] Prompt API not available:', error);
         }
       }
 
@@ -168,13 +211,13 @@
               this.aiCapabilities.writer = true;
               console.info('[Mosqit] ✅ Chrome AI Writer API model downloaded!');
             } catch (downloadError) {
-              console.warn('[Mosqit] Writer model download in progress:', downloadError);
+              this._warn('[Mosqit] Writer model download in progress:', downloadError);
               this.aiAvailable = true;
               this.aiCapabilities.writer = true;
             }
           }
         } catch (error) {
-          console.debug('[Mosqit] Writer API not available:', error);
+          this._debug('[Mosqit] Writer API not available:', error);
         }
       }
 
@@ -188,7 +231,7 @@
             console.info('[Mosqit] ✅ Chrome AI Summarizer API ready!');
           }
         } catch (error) {
-          console.debug('[Mosqit] Summarizer API not available:', error);
+          this._debug('[Mosqit] Summarizer API not available:', error);
         }
       }
 
@@ -202,7 +245,7 @@
             console.info('[Mosqit] ✅ Chrome AI Rewriter API ready!');
           }
         } catch (error) {
-          console.debug('[Mosqit] Rewriter API not available:', error);
+          this._debug('[Mosqit] Rewriter API not available:', error);
         }
       }
 
@@ -225,7 +268,7 @@
               console.info('[Mosqit] ✅ Legacy Writer API available');
             }
           } catch (error) {
-            console.debug('[Mosqit] Legacy Writer API error:', error);
+            this._debug('[Mosqit] Legacy Writer API error:', error);
           }
         }
 
@@ -239,43 +282,45 @@
               console.info('[Mosqit] ✅ Legacy Summarizer API available');
             }
           } catch (error) {
-            console.debug('[Mosqit] Legacy Summarizer check failed:', error);
+            this._debug('[Mosqit] Legacy Summarizer check failed:', error);
           }
         }
       }
 
       // Debug logging to see what's actually available
-      console.group('[Mosqit] 🔍 Chrome AI Detection Results');
-      console.log('window.ai exists?', typeof window.ai !== 'undefined');
-      if (window.ai) {
-        console.log('window.ai.assistant?', !!window.ai.assistant);
-        console.log('window.ai.writer?', !!window.ai.writer);
-        console.log('window.ai.languageModel?', !!window.ai.languageModel);
-        console.log('window.ai.summarizer?', !!window.ai.summarizer);
-      }
-      console.log('this.aiAvailable:', this.aiAvailable);
-      console.log('this.aiCapabilities:', this.aiCapabilities);
-      console.groupEnd();
-
-      if (!this.aiAvailable) {
-        console.warn('[Mosqit] ❌ Chrome AI NOT ACTIVE - Using fallback analysis');
-        console.info('[Mosqit] To enable AI:');
-        console.info('[Mosqit] 1. Go to chrome://flags');
-        console.info('[Mosqit] 2. Enable: #prompt-api-for-gemini-nano');
-        console.info('[Mosqit] 3. Enable: #optimization-guide-on-device-model');
-        console.info('[Mosqit] 4. Restart Chrome completely');
-
-        // Retry detection after delay
-        if (!this.aiRetryAttempted) {
-          this.aiRetryAttempted = true;
-          setTimeout(() => {
-            console.info('[Mosqit] 🔄 Retrying AI detection...');
-            this.checkChromeAI();
-          }, 3000);
+      if (this.DEBUG) {
+        console.group('[Mosqit] 🔍 Chrome AI Detection Results');
+        console.log('window.ai exists?', typeof window.ai !== 'undefined');
+        if (window.ai) {
+          console.log('window.ai.assistant?', !!window.ai.assistant);
+          console.log('window.ai.writer?', !!window.ai.writer);
+          console.log('window.ai.languageModel?', !!window.ai.languageModel);
+          console.log('window.ai.summarizer?', !!window.ai.summarizer);
         }
-      } else {
-        console.info('[Mosqit] ✅ Chrome AI ACTIVE! Using real AI for analysis');
-        console.info('[Mosqit] Available APIs:', this.aiCapabilities);
+        console.log('this.aiAvailable:', this.aiAvailable);
+        console.log('this.aiCapabilities:', this.aiCapabilities);
+        console.groupEnd();
+
+        if (!this.aiAvailable) {
+          console.warn('[Mosqit] ❌ Chrome AI NOT ACTIVE - Using fallback analysis');
+          console.info('[Mosqit] To enable AI:');
+          console.info('[Mosqit] 1. Go to chrome://flags');
+          console.info('[Mosqit] 2. Enable: #prompt-api-for-gemini-nano');
+          console.info('[Mosqit] 3. Enable: #optimization-guide-on-device-model');
+          console.info('[Mosqit] 4. Restart Chrome completely');
+        } else {
+          console.info('[Mosqit] ✅ Chrome AI ACTIVE! Using real AI for analysis');
+          console.info('[Mosqit] Available APIs:', this.aiCapabilities);
+        }
+      }
+
+      // Retry detection after delay (if AI not available)
+      if (!this.aiAvailable && !this.aiRetryAttempted) {
+        this.aiRetryAttempted = true;
+        setTimeout(() => {
+          this._log('[Mosqit] 🔄 Retrying AI detection...');
+          this.checkChromeAI();
+        }, 3000);
       }
     }
 
@@ -289,40 +334,76 @@
       };
 
       ['log', 'error', 'warn', 'info', 'debug'].forEach(method => {
-        console[method] = async (...args) => {
-          // Call original first
+        // CRITICAL FIX: Console methods MUST be synchronous
+        // Defer heavy work (metadata capture, AI analysis) to avoid blocking
+        console[method] = (...args) => {
+          // 1. Call original console IMMEDIATELY - must be synchronous
           originalConsole[method](...args);
 
-          try {
-            // Then capture and analyze
-            const metadata = this.captureMetadata(method, args);
+          // 2. Schedule heavy work for later using requestIdleCallback
+          // This prevents blocking the main thread
+          const scheduleWork = () => {
+            try {
+              // Capture metadata (this is the slow part: 140 lines, DOM queries, etc.)
+              const metadata = this.captureMetadata(method, args);
 
-          // Add to recent logs for context
-          if (method !== 'error' && method !== 'warn') {
-            this.recentLogs.push({
-              level: method,
-              message: metadata.message,
-              time: Date.now()
-            });
-            if (this.recentLogs.length > this.maxRecentLogs) {
-              this.recentLogs.shift();
+              // Add to recent logs for context
+              if (method !== 'error' && method !== 'warn') {
+                this.recentLogs.push({
+                  level: method,
+                  message: metadata.message,
+                  time: Date.now()
+                });
+                if (this.recentLogs.length > this.maxRecentLogs) {
+                  this.recentLogs.shift();
+                }
+              }
+
+              // For errors/warnings, provide immediate pattern analysis (fast)
+              if (method === 'error' || method === 'warn') {
+                metadata.analysis = this.analyzeWithPatterns(metadata);
+
+                // UX: Mark as "AI thinking" if AI is available
+                if (this.aiAvailable) {
+                  metadata.aiThinking = true;
+                }
+              }
+
+              // Store log immediately with pattern analysis (or no analysis for info/log)
+              this.storeLog(metadata);
+
+              // Schedule AI analysis for later (slow, async) for errors/warnings
+              if ((method === 'error' || method === 'warn') && this.aiAvailable) {
+                this.analyzeWithAI(metadata).then(aiAnalysis => {
+                  if (aiAnalysis && aiAnalysis.trim()) {
+                    // Update with AI analysis
+                    metadata.analysis = aiAnalysis;
+                    metadata.aiThinking = false;
+
+                    // CRITICAL: Notify panel of the updated analysis
+                    this.updateLog(metadata);
+                  } else {
+                    // AI returned empty, keep pattern analysis
+                    metadata.aiThinking = false;
+                    this.updateLog(metadata);
+                  }
+                }).catch(err => {
+                  // AI analysis failed, keep pattern analysis
+                  metadata.aiThinking = false;
+                  this.updateLog(metadata);
+                });
+              }
+            } catch (error) {
+              // If there's an error in our logging, don't break the console
+              originalConsole.debug('[Mosqit] Error capturing log:', error);
             }
-          }
+          };
 
-          if (this.aiAvailable && (method === 'error' || method === 'warn')) {
-            metadata.analysis = await this.analyzeWithAI(metadata);
-            // Print AI analysis immediately
-            originalConsole.info(`[Mosqit AI Analysis] ${metadata.analysis}`);
-          } else if (method === 'error' || method === 'warn') {
-            metadata.analysis = this.analyzeWithPatterns(metadata);
-            // Print pattern-based analysis
-            originalConsole.info(`[Mosqit Analysis] ${metadata.analysis}`);
-          }
-
-          this.storeLog(metadata);
-          } catch (error) {
-            // If there's an error in our logging, don't break the console
-            originalConsole.debug('[Mosqit] Error capturing log:', error);
+          // Use requestIdleCallback if available (better), otherwise setTimeout
+          if (typeof requestIdleCallback !== 'undefined') {
+            requestIdleCallback(scheduleWork, { timeout: 1000 });
+          } else {
+            setTimeout(scheduleWork, 0);
           }
         };
       });
@@ -471,19 +552,54 @@
       return metadata;
     }
 
+    // PERFORMANCE FIX: Check if we can make an AI call (rate limiting)
+    canMakeAICall() {
+      // Check concurrent calls limit
+      if (this.activeAICalls >= this.maxConcurrentAICalls) {
+        return false;
+      }
+
+      // Check minimum interval between calls
+      const now = Date.now();
+      if (now - this.lastAICallTime < this.minAICallInterval) {
+        return false;
+      }
+
+      // Check calls per minute limit
+      const oneMinuteAgo = now - 60000;
+      this.aiCallTimestamps = this.aiCallTimestamps.filter(t => t > oneMinuteAgo);
+      if (this.aiCallTimestamps.length >= this.maxAICallsPerMinute) {
+        return false;
+      }
+
+      return true;
+    }
+
+    // PERFORMANCE FIX: Rate-limited AI analysis
     async analyzeWithAI(metadata) {
       if (!this.aiAvailable) return this.analyzeWithPatterns(metadata);
+
+      // PERFORMANCE FIX: Apply rate limiting
+      if (!this.canMakeAICall()) {
+        console.debug('[Mosqit] AI call rate limited, using pattern analysis');
+        return this.analyzeWithPatterns(metadata);
+      }
+
+      // Track this AI call
+      this.activeAICalls++;
+      this.lastAICallTime = Date.now();
+      this.aiCallTimestamps.push(this.lastAICallTime);
 
       try {
         // Try Prompt API first (most powerful)
         if (this.aiCapabilities.prompt && window.ai?.assistant) {
-          console.log('[Mosqit] Using Prompt API for analysis');
+          this._log('[Mosqit] Using Prompt API for analysis');
           if (!this.promptSession) {
             try {
               this.promptSession = await window.ai.assistant.create();
-              console.log('[Mosqit] Created assistant session');
+              this._log('[Mosqit] Created assistant session');
             } catch (e) {
-              console.warn('[Mosqit] Failed to create assistant session:', e);
+              this._warn('[Mosqit] Failed to create assistant session:', e);
               this.aiCapabilities.prompt = false;
             }
           }
@@ -494,10 +610,10 @@
 
             try {
               const response = await this.promptSession.prompt(prompt);
-              console.log('[Mosqit] AI response received');
+              this._log('[Mosqit] AI response received');
               return `🤖 ${response.substring(0, 300)}`;
             } catch (e) {
-              console.warn('[Mosqit] Prompt failed:', e);
+              this._warn('[Mosqit] Prompt failed:', e);
               this.promptSession = null;
             }
           }
@@ -505,7 +621,7 @@
 
         // Fall back to Writer API if available
         if (!this.writerSession && this.aiCapabilities.writer && window.ai?.writer) {
-          console.log('[Mosqit] Trying Writer API for analysis');
+          this._log('[Mosqit] Trying Writer API for analysis');
           try {
             this.writerSession = await window.ai.writer.create({
               tone: 'neutral',
@@ -513,7 +629,7 @@
               length: 'medium',
               sharedContext: 'You are a debugging assistant analyzing JavaScript errors.'
             });
-            console.log('[Mosqit] Created writer session');
+            this._log('[Mosqit] Created writer session');
           } catch (e) {
             console.warn('[Mosqit] Failed to create writer session:', e);
             this.aiCapabilities.writer = false;
@@ -521,7 +637,7 @@
         }
 
         if (!this.writerSession && !this.promptSession) {
-          console.log('[Mosqit] No AI sessions available, using patterns');
+          this._log('[Mosqit] No AI sessions available, using patterns');
           return this.analyzeWithPatterns(metadata);
         }
 
@@ -566,6 +682,9 @@
         this.promptSession = null;
         this.writerSession = null;
         return this.analyzeWithPatterns(metadata);
+      } finally {
+        // PERFORMANCE FIX: Always decrement active calls counter
+        this.activeAICalls = Math.max(0, this.activeAICalls - 1);
       }
     }
 
@@ -851,11 +970,58 @@
       // Truncate if too long
       let sanitized = html.substring(0, 3000);
 
-      // Remove sensitive attributes
-      sanitized = sanitized.replace(/password="[^"]*"/gi, 'password="***"');
-      sanitized = sanitized.replace(/token="[^"]*"/gi, 'token="***"');
-      sanitized = sanitized.replace(/api[_-]?key="[^"]*"/gi, 'api-key="***"');
-      sanitized = sanitized.replace(/secret="[^"]*"/gi, 'secret="***"');
+      // ENHANCED SANITIZATION for GDPR/HIPAA compliance
+
+      // 1. Sensitive field attributes (name, id, class patterns)
+      const sensitiveFieldPatterns = [
+        /password/gi, /passwd/gi, /pwd/gi,
+        /ssn/gi, /social[_-]?security/gi,
+        /credit[_-]?card/gi, /card[_-]?number/gi, /cvv/gi, /cvc/gi,
+        /bank[_-]?account/gi, /routing[_-]?number/gi,
+        /api[_-]?key/gi, /secret/gi, /token/gi, /auth/gi,
+        /pin/gi, /security[_-]?code/gi,
+        /dob/gi, /birth[_-]?date/gi,
+        /passport/gi, /license/gi, /driver/gi,
+        /medical/gi, /diagnosis/gi, /patient/gi, /health/gi
+      ];
+
+      // 2. Replace value attributes in sensitive fields
+      sanitized = sanitized.replace(/(<input[^>]*(password|ssn|credit|card|cvv|pin|secret|token|key)[^>]*)value="[^"]*"/gi, '$1value="[REDACTED]"');
+      sanitized = sanitized.replace(/(<input[^>]*(password|ssn|credit|card|cvv|pin|secret|token|key)[^>]*)value='[^']*'/gi, "$1value='[REDACTED]'");
+
+      // 3. Replace attribute values that look sensitive
+      sanitized = sanitized.replace(/(password|passwd|pwd|token|secret|api[_-]?key|auth[_-]?token|bearer)="[^"]*"/gi, '$1="[REDACTED]"');
+      sanitized = sanitized.replace(/(password|passwd|pwd|token|secret|api[_-]?key|auth[_-]?token|bearer)='[^']*'/gi, "$1='[REDACTED]'");
+
+      // 4. Redact credit card numbers (various formats)
+      sanitized = sanitized.replace(/\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b/g, '[CARD-REDACTED]');
+
+      // 5. Redact SSN patterns (XXX-XX-XXXX or XXXXXXXXX)
+      sanitized = sanitized.replace(/\b\d{3}-?\d{2}-?\d{4}\b/g, '[SSN-REDACTED]');
+
+      // 6. Redact email addresses (privacy)
+      sanitized = sanitized.replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g, '[EMAIL-REDACTED]');
+
+      // 7. Redact phone numbers (various formats)
+      sanitized = sanitized.replace(/\b(\+\d{1,3}[\s-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}\b/g, '[PHONE-REDACTED]');
+
+      // 8. Redact Bearer tokens in text content
+      sanitized = sanitized.replace(/Bearer\s+[A-Za-z0-9_\-\.]+/gi, 'Bearer [TOKEN-REDACTED]');
+
+      // 9. Redact JWT tokens (look like xxx.yyy.zzz)
+      sanitized = sanitized.replace(/\beyJ[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+/g, '[JWT-REDACTED]');
+
+      // 10. Redact API keys (common patterns: 32+ alphanumeric)
+      sanitized = sanitized.replace(/\b[A-Za-z0-9]{32,}\b/g, (match) => {
+        // Only redact if it looks like a key (no spaces, mixed case)
+        return /[A-Z]/.test(match) && /[a-z]/.test(match) ? '[KEY-REDACTED]' : match;
+      });
+
+      // 11. Redact data: URIs with base64 (can contain sensitive screenshots/files)
+      sanitized = sanitized.replace(/data:image\/[^;]+;base64,[A-Za-z0-9+\/=]+/g, 'data:image/[REDACTED];base64,[REDACTED]');
+
+      // 12. Redact JSON values with sensitive keys
+      sanitized = sanitized.replace(/"(password|token|secret|apiKey|api_key|accessToken|refreshToken|sessionId|authToken)"\s*:\s*"[^"]*"/gi, '"$1":"[REDACTED]"');
 
       return sanitized;
     }
@@ -956,17 +1122,145 @@
           cdns: []
         };
 
-        // Detect common frameworks
-        if (window.React) dependencies.frameworks.push('React ' + (window.React.version || ''));
-        if (window.Vue) dependencies.frameworks.push('Vue ' + (window.Vue?.version || ''));
-        if (window.angular) dependencies.frameworks.push('Angular');
-        if (window.ng) dependencies.frameworks.push('Angular 2+');
-        if (window.Ember) dependencies.frameworks.push('Ember');
-        if (window.Backbone) dependencies.frameworks.push('Backbone');
-        if (window.Svelte) dependencies.frameworks.push('Svelte');
-        if (window.Alpine) dependencies.frameworks.push('Alpine.js');
-        if (window.htmx) dependencies.frameworks.push('HTMX');
-        if (window.Stimulus) dependencies.frameworks.push('Stimulus');
+        // MODERNIZED: Detect frameworks using DOM introspection and DevTools hooks
+        // PERFORMANCE: Single DOM scan for all frameworks to avoid multiple passes
+
+        // Quick window-based checks (no DOM scan)
+        const quickChecks = {
+          react: window.__REACT_DEVTOOLS_GLOBAL_HOOK__,
+          nextjs: window.__NEXT_DATA__,
+          vue: window.__VUE_DEVTOOLS_GLOBAL_HOOK__,
+          nuxt: window.$nuxt || window.__NUXT__,
+          angular: window.ng || window.angular || typeof window.getAllAngularRootElements === 'function',
+          svelte: window.__sveltekit__,
+          preact: window.__PREACT_DEVTOOLS__,
+          remix: window.__remixContext,
+          gatsby: window.___gatsby,
+          qwik: window.qwikloader$,
+          ember: window.Ember,
+          backbone: window.Backbone,
+          alpine: window.Alpine,
+          htmx: window.htmx,
+          stimulus: window.Stimulus
+        };
+
+        // Single optimized DOM scan (limited to first 50 elements for performance)
+        const domIndicators = {
+          react: false,
+          vue: false,
+          angular: false,
+          svelte: false,
+          solid: false,
+          preact: false
+        };
+
+        // Check special elements first (faster)
+        if (document.querySelector('[data-reactroot], [data-reactid]')) domIndicators.react = true;
+        if (document.querySelector('script[src*="/_next/"]')) quickChecks.nextjs = true;
+        if (document.querySelector('[data-sveltekit]')) quickChecks.svelte = true;
+        if (document.querySelector('#___gatsby')) quickChecks.gatsby = true;
+        if (document.querySelector('astro-island')) domIndicators.astro = true;
+        if (document.querySelector('[q\\:container]')) quickChecks.qwik = true;
+        if (document.querySelector('script[src*="svelte"]')) domIndicators.svelte = true;
+
+        // Efficient DOM scan for framework properties (sample first 50 elements)
+        const elementsToCheck = Array.from(document.querySelectorAll('body, body > *, #app, #root, [id*="app"], [id*="root"]')).slice(0, 50);
+        for (const el of elementsToCheck) {
+          // React indicators
+          if (!domIndicators.react && (
+            el._reactRootContainer ||
+            el._reactRoot ||
+            Object.keys(el).some(key => key.startsWith('__reactContainer') || key.startsWith('__reactFiber'))
+          )) {
+            domIndicators.react = true;
+          }
+
+          // Vue indicators
+          if (!domIndicators.vue && (el.__vue__ || el.__vueParentComponent || el.__vue_app__)) {
+            domIndicators.vue = true;
+          }
+
+          // Angular indicators
+          if (!domIndicators.angular && el.__ngContext__ !== undefined) {
+            domIndicators.angular = true;
+          }
+
+          // Svelte indicators
+          if (!domIndicators.svelte && el.__svelte_meta !== undefined) {
+            domIndicators.svelte = true;
+          }
+
+          // Solid.js indicators
+          if (!domIndicators.solid && el._$owner !== undefined) {
+            domIndicators.solid = true;
+          }
+
+          // Preact indicators
+          if (!domIndicators.preact && el.__preactattr_ !== undefined) {
+            domIndicators.preact = true;
+          }
+
+          // Early exit if we found all frameworks
+          if (domIndicators.react && domIndicators.vue && domIndicators.angular &&
+              domIndicators.svelte && domIndicators.solid && domIndicators.preact) {
+            break;
+          }
+        }
+
+        // Build framework list from checks
+        if (quickChecks.react || domIndicators.react) {
+          const version = window.React?.version || 'detected';
+          dependencies.frameworks.push('React ' + version);
+        }
+
+        if (quickChecks.nextjs) {
+          dependencies.frameworks.push('Next.js');
+        }
+
+        if (quickChecks.vue || domIndicators.vue) {
+          const version = window.Vue?.version || 'detected';
+          dependencies.frameworks.push('Vue ' + version);
+        }
+
+        if (quickChecks.nuxt) {
+          dependencies.frameworks.push('Nuxt.js');
+        }
+
+        if (quickChecks.angular || domIndicators.angular) {
+          dependencies.frameworks.push('Angular');
+        }
+
+        if (quickChecks.svelte || domIndicators.svelte) {
+          dependencies.frameworks.push('Svelte');
+        }
+
+        if (domIndicators.solid) {
+          dependencies.frameworks.push('Solid.js');
+        }
+
+        if (quickChecks.preact || domIndicators.preact) {
+          dependencies.frameworks.push('Preact');
+        }
+
+        if (quickChecks.remix) {
+          dependencies.frameworks.push('Remix');
+        }
+
+        if (quickChecks.gatsby || domIndicators.astro) {
+          if (quickChecks.gatsby) dependencies.frameworks.push('Gatsby');
+          if (domIndicators.astro) dependencies.frameworks.push('Astro');
+        }
+
+        if (quickChecks.qwik) {
+          dependencies.frameworks.push('Qwik');
+        }
+
+        // Legacy frameworks (simple window checks)
+        if (quickChecks.ember) dependencies.frameworks.push('Ember');
+        if (quickChecks.backbone) dependencies.frameworks.push('Backbone');
+        if (quickChecks.alpine) dependencies.frameworks.push('Alpine.js');
+        if (quickChecks.htmx) dependencies.frameworks.push('HTMX');
+        if (quickChecks.stimulus) dependencies.frameworks.push('Stimulus');
 
         // Detect libraries
         if (window.jQuery || window.$) {
@@ -1063,6 +1357,13 @@
         const key = `${metadata.file}:${metadata.line}`;
         this.errorPatterns.set(key, (this.errorPatterns.get(key) || 0) + 1);
 
+        // MEMORY FIX: Limit errorPatterns map size to prevent unbounded growth
+        if (this.errorPatterns.size > this.maxErrorPatterns) {
+          // Remove oldest entry (first entry in Map)
+          const firstKey = this.errorPatterns.keys().next().value;
+          this.errorPatterns.delete(firstKey);
+        }
+
         // Alert on recurring errors
         if (this.errorPatterns.get(key) === 3) {
           console.warn(`[Mosqit] 🔄 Recurring error detected at ${key}`);
@@ -1075,10 +1376,24 @@
         window.postMessage({
           type: 'MOSQIT_LOG_FROM_MAIN',
           data: metadata
-        }, '*');
+        }, window.location.origin); // SECURITY FIX: Use specific origin
       } catch (e) {
         // Failed to post message
         console.warn('[Mosqit] Failed to send log to extension:', e);
+      }
+    }
+
+    // PERFORMANCE FIX: Update an existing log (when AI analysis completes)
+    updateLog(metadata) {
+      // The log is already updated in this.logs by reference
+      // Just notify the panel about the update
+      try {
+        window.postMessage({
+          type: 'MOSQIT_LOG_UPDATE',
+          data: metadata
+        }, window.location.origin);
+      } catch (e) {
+        console.warn('[Mosqit] Failed to send log update to extension:', e);
       }
     }
 
@@ -1132,15 +1447,33 @@
           }
         };
 
+        // Pattern analysis first (fast)
+        metadata.analysis = this.analyzeWithPatterns(metadata);
+
+        // UX: Mark as "AI thinking" if AI is available
         if (this.aiAvailable) {
-          metadata.analysis = await this.analyzeWithAI(metadata);
-          originalConsole(`[Mosqit AI Analysis - Runtime Error] ${metadata.analysis}`);
-        } else {
-          metadata.analysis = this.analyzeWithPatterns(metadata);
-          originalConsole(`[Mosqit Analysis - Runtime Error] ${metadata.analysis}`);
+          metadata.aiThinking = true;
         }
 
+        // Store log with pattern analysis
         this.storeLog(metadata);
+
+        // PERFORMANCE FIX: Run AI analysis async without blocking
+        if (this.aiAvailable) {
+          this.analyzeWithAI(metadata).then(aiAnalysis => {
+            if (aiAnalysis && aiAnalysis.trim()) {
+              metadata.analysis = aiAnalysis;
+              metadata.aiThinking = false;
+              this.updateLog(metadata);
+            } else {
+              metadata.aiThinking = false;
+              this.updateLog(metadata);
+            }
+          }).catch(err => {
+            metadata.aiThinking = false;
+            this.updateLog(metadata);
+          });
+        }
       });
 
       window.addEventListener('unhandledrejection', async (event) => {
@@ -1209,16 +1542,98 @@
           previousError: this.lastError
         };
 
+        // Pattern analysis first (fast)
+        metadata.analysis = this.analyzeWithPatterns(metadata);
+
+        // UX: Mark as "AI thinking" if AI is available
         if (this.aiAvailable) {
-          metadata.analysis = await this.analyzeWithAI(metadata);
-          originalConsole(`[Mosqit AI Analysis - Promise] ${metadata.analysis}`);
-        } else {
-          metadata.analysis = this.analyzeWithPatterns(metadata);
-          originalConsole(`[Mosqit Analysis - Promise] ${metadata.analysis}`);
+          metadata.aiThinking = true;
         }
 
+        // Store log with pattern analysis
         this.storeLog(metadata);
+
+        // PERFORMANCE FIX: Run AI analysis async without blocking
+        if (this.aiAvailable) {
+          this.analyzeWithAI(metadata).then(aiAnalysis => {
+            if (aiAnalysis && aiAnalysis.trim()) {
+              metadata.analysis = aiAnalysis;
+              metadata.aiThinking = false;
+              this.updateLog(metadata);
+            } else {
+              metadata.aiThinking = false;
+              this.updateLog(metadata);
+            }
+          }).catch(err => {
+            metadata.aiThinking = false;
+            this.updateLog(metadata);
+          });
+        }
       });
+    }
+
+    // MEMORY FIX: Complete cleanup/destroy method
+    destroy() {
+      if (this.isDestroyed) return;
+
+      console.log('[Mosqit] Cleaning up and destroying logger...');
+      this.isDestroyed = true;
+
+      // Remove all tracked event listeners
+      this.eventListeners.forEach(({ target, event, handler, options }) => {
+        try {
+          target.removeEventListener(event, handler, options);
+        } catch (e) {
+          this._debug('[Mosqit] Failed to remove event listener:', e);
+        }
+      });
+      this.eventListeners = [];
+
+      // Clear all intervals
+      this.intervals.forEach(intervalId => {
+        clearInterval(intervalId);
+      });
+      this.intervals = [];
+
+      // Clear all timeouts
+      this.timeouts.forEach(timeoutId => {
+        clearTimeout(timeoutId);
+      });
+      this.timeouts = [];
+
+      // Clean up highlight timeouts
+      this.highlightTimeouts.forEach(timeoutId => {
+        clearTimeout(timeoutId);
+      });
+      this.highlightTimeouts.clear();
+
+      // Destroy AI sessions
+      if (this.promptSession && typeof this.promptSession.destroy === 'function') {
+        try {
+          this.promptSession.destroy();
+        } catch (e) {
+          this._debug('[Mosqit] Failed to destroy prompt session:', e);
+        }
+      }
+      if (this.writerSession && typeof this.writerSession.destroy === 'function') {
+        try {
+          this.writerSession.destroy();
+        } catch (e) {
+          this._debug('[Mosqit] Failed to destroy writer session:', e);
+        }
+      }
+
+      // Clean up remaining highlights
+      this.cleanupHighlights();
+
+      // Clear data structures
+      this.logs = [];
+      this.recentLogs = [];
+      this.userActionHistory = [];
+      this.errorPatterns.clear();
+      this.errorContext.clear();
+
+      console.log('[Mosqit] ✅ Logger destroyed and cleaned up');
     }
 
     // Public API

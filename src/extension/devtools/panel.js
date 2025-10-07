@@ -21,6 +21,10 @@ class MosqitDevToolsPanel {
     this.selectedLogIndex = -1;
     this.port = null;
 
+    // EPHEMERAL MODE: Session-only settings (not persisted)
+    this.githubToken = '';
+    this.githubRepo = '';
+
     this.init();
   }
 
@@ -283,6 +287,10 @@ class MosqitDevToolsPanel {
         console.log('[Mosqit Panel] Received message:', message.type);
         if (message.type === 'NEW_LOG') {
           this.addLog(message.data);
+        } else if (message.type === 'LOG_UPDATE') {
+          // UX FIX: Update existing log when AI analysis completes
+          console.log('[Mosqit Panel] Received log update');
+          this.updateLogAnalysis(message.data);
         } else if (message.type === 'LOGS_DATA') {
           console.log('[Mosqit Panel] Received', message.data?.length || 0, 'logs');
           this.logs = message.data || [];
@@ -460,21 +468,18 @@ class MosqitDevToolsPanel {
           panel.classList.toggle('light-theme', newTheme === 'light');
         }
 
-        // Save preference
-        chrome.storage.local.set({ theme: newTheme });
+        // Ephemeral theme (session-only, not persisted)
       });
 
-      // Load saved theme on startup
-      chrome.storage.local.get(['theme'], (result) => {
-        const theme = result.theme || 'dark';
-        document.documentElement.setAttribute('data-theme', theme);
+      // Default theme on startup
+      const defaultTheme = 'dark';
+      document.documentElement.setAttribute('data-theme', defaultTheme);
 
-        const panel = document.querySelector('.mosqit-panel');
-        if (panel) {
-          panel.classList.toggle('dark-theme', theme === 'dark');
-          panel.classList.toggle('light-theme', theme === 'light');
-        }
-      });
+      const panel = document.querySelector('.mosqit-panel');
+      if (panel) {
+        panel.classList.toggle('dark-theme', defaultTheme === 'dark');
+        panel.classList.toggle('light-theme', defaultTheme === 'light');
+      }
     }
 
     // Close details button
@@ -522,6 +527,35 @@ class MosqitDevToolsPanel {
       this.filteredLogs.push(logData);
       this.appendLogToUI(logData);
       this.updateLogCount();
+    }
+  }
+
+  // UX FIX: Update log when AI analysis completes
+  updateLogAnalysis(updatedLog) {
+    // Find and update the log in our arrays
+    const logIndex = this.logs.findIndex(log => log.timestamp === updatedLog.timestamp);
+    if (logIndex !== -1) {
+      this.logs[logIndex] = updatedLog;
+
+      // Update filtered logs too
+      const filteredIndex = this.filteredLogs.findIndex(log => log.timestamp === updatedLog.timestamp);
+      if (filteredIndex !== -1) {
+        this.filteredLogs[filteredIndex] = updatedLog;
+
+        // Update the DOM element for this specific log
+        const aiElement = this.elements.logsList.querySelector(
+          `.ai-analysis[data-log-timestamp="${updatedLog.timestamp}"]`
+        );
+
+        if (aiElement) {
+          // Update the AI analysis box
+          aiElement.className = 'ai-analysis'; // Remove thinking class
+          aiElement.innerHTML = `
+            <span class="ai-icon">✨</span>
+            <span class="ai-text">${this.escapeHtml(updatedLog.analysis)}</span>
+          `;
+        }
+      }
     }
   }
 
@@ -644,11 +678,22 @@ class MosqitDevToolsPanel {
     // Add AI analysis as a separate element if enabled
     if (this.filters.showAIAnalysis && data.analysis) {
       const aiElement = document.createElement('div');
-      aiElement.className = 'ai-analysis';
-      aiElement.innerHTML = `
-        <span class="ai-icon">✨</span>
-        <span class="ai-text">${this.escapeHtml(data.analysis)}</span>
-      `;
+      aiElement.className = 'ai-analysis' + (data.aiThinking ? ' ai-thinking' : '');
+      aiElement.setAttribute('data-log-timestamp', data.timestamp); // For updates
+
+      if (data.aiThinking) {
+        // Show thinking animation
+        aiElement.innerHTML = `
+          <span class="ai-icon thinking-dots">🤔</span>
+          <span class="ai-text thinking-text">AI is analyzing...</span>
+        `;
+      } else {
+        // Show analysis
+        aiElement.innerHTML = `
+          <span class="ai-icon">✨</span>
+          <span class="ai-text">${this.escapeHtml(data.analysis)}</span>
+        `;
+      }
       logEntry.appendChild(aiElement);
     }
 
@@ -2389,32 +2434,24 @@ Memory Usage: ${this.getMemoryUsage()}
   }
 
   async getGitHubSettings() {
-    return new Promise((resolve) => {
-      chrome.storage.sync.get(['githubToken', 'githubRepo'], (result) => {
-        resolve({
-          token: result.githubToken || '',
-          repo: result.githubRepo || ''
-        });
-      });
-    });
+    // EPHEMERAL MODE: Session-only GitHub settings (not persisted)
+    return {
+      token: this.githubToken || '',
+      repo: this.githubRepo || ''
+    };
   }
 
   async saveGitHubSettings(token, repo) {
-    return new Promise((resolve) => {
-      chrome.storage.sync.set({
-        githubToken: token,
-        githubRepo: repo
-      }, resolve);
-    });
+    // EPHEMERAL MODE: Session-only GitHub settings (not persisted)
+    this.githubToken = token;
+    this.githubRepo = repo;
   }
 
   async clearGitHubSettings() {
-    return new Promise((resolve) => {
-      chrome.storage.sync.remove(['githubToken', 'githubRepo'], () => {
-        console.log('[Mosqit] GitHub settings cleared');
-        resolve();
-      });
-    });
+    // EPHEMERAL MODE: Session-only GitHub settings (not persisted)
+    this.githubToken = '';
+    this.githubRepo = '';
+    console.log('[Mosqit] GitHub settings cleared (session)');
   }
 
   showGitHubSettings(issueTitle, issueBody, errorMessage = null) {

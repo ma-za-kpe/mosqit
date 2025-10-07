@@ -4,7 +4,6 @@
   "version": "1.0.0",
   "description": "AI-powered frontend debugging with Chrome built-in AI (Gemini Nano)",
   "permissions": [
-    "storage",
     "tabs",
     "scripting",
     "activeTab"

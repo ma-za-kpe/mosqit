@@ -157,6 +157,7 @@ export const useTrackVisibility = (elementId: string, threshold = 0.5) => {
   useEffect(() => {
     if (!elementRef.current) return;
 
+    const currentElement = elementRef.current;
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -172,10 +173,10 @@ export const useTrackVisibility = (elementId: string, threshold = 0.5) => {
       { threshold }
     );
 
-    observer.observe(elementRef.current);
+    observer.observe(currentElement);
 
     return () => {
-      if (elementRef.current) observer.unobserve(elementRef.current);
+      observer.unobserve(currentElement);
     };
   }, [elementId, threshold]);
 

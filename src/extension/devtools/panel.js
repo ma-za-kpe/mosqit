@@ -21,6 +21,10 @@ class MosqitDevToolsPanel {
     this.selectedLogIndex = -1;
     this.port = null;
 
+    // EPHEMERAL MODE: Session-only settings (not persisted)
+    this.githubToken = '';
+    this.githubRepo = '';
+
     this.init();
   }
 
@@ -283,6 +287,10 @@ class MosqitDevToolsPanel {
         console.log('[Mosqit Panel] Received message:', message.type);
         if (message.type === 'NEW_LOG') {
           this.addLog(message.data);
+        } else if (message.type === 'LOG_UPDATE') {
+          // UX FIX: Update existing log when AI analysis completes
+          console.log('[Mosqit Panel] Received log update');
+          this.updateLogAnalysis(message.data);
         } else if (message.type === 'LOGS_DATA') {
           console.log('[Mosqit Panel] Received', message.data?.length || 0, 'logs');
           this.logs = message.data || [];
@@ -460,21 +468,18 @@ class MosqitDevToolsPanel {
           panel.classList.toggle('light-theme', newTheme === 'light');
         }
 
-        // Save preference
-        chrome.storage.local.set({ theme: newTheme });
+        // Ephemeral theme (session-only, not persisted)
       });
 
-      // Load saved theme on startup
-      chrome.storage.local.get(['theme'], (result) => {
-        const theme = result.theme || 'dark';
-        document.documentElement.setAttribute('data-theme', theme);
+      // Default theme on startup
+      const defaultTheme = 'dark';
+      document.documentElement.setAttribute('data-theme', defaultTheme);
 
-        const panel = document.querySelector('.mosqit-panel');
-        if (panel) {
-          panel.classList.toggle('dark-theme', theme === 'dark');
-          panel.classList.toggle('light-theme', theme === 'light');
-        }
-      });
+      const panel = document.querySelector('.mosqit-panel');
+      if (panel) {
+        panel.classList.toggle('dark-theme', defaultTheme === 'dark');
+        panel.classList.toggle('light-theme', defaultTheme === 'light');
+      }
     }
 
     // Close details button
@@ -522,6 +527,35 @@ class MosqitDevToolsPanel {
       this.filteredLogs.push(logData);
       this.appendLogToUI(logData);
       this.updateLogCount();
+    }
+  }
+
+  // UX FIX: Update log when AI analysis completes
+  updateLogAnalysis(updatedLog) {
+    // Find and update the log in our arrays
+    const logIndex = this.logs.findIndex(log => log.timestamp === updatedLog.timestamp);
+    if (logIndex !== -1) {
+      this.logs[logIndex] = updatedLog;
+
+      // Update filtered logs too
+      const filteredIndex = this.filteredLogs.findIndex(log => log.timestamp === updatedLog.timestamp);
+      if (filteredIndex !== -1) {
+        this.filteredLogs[filteredIndex] = updatedLog;
+
+        // Update the DOM element for this specific log
+        const aiElement = this.elements.logsList.querySelector(
+          `.ai-analysis[data-log-timestamp="${updatedLog.timestamp}"]`
+        );
+
+        if (aiElement) {
+          // Update the AI analysis box
+          aiElement.className = 'ai-analysis'; // Remove thinking class
+          aiElement.innerHTML = `
+            <span class="ai-icon">✨</span>
+            <span class="ai-text">${this.escapeHtml(updatedLog.analysis)}</span>
+          `;
+        }
+      }
     }
   }
 
@@ -644,11 +678,22 @@ class MosqitDevToolsPanel {
     // Add AI analysis as a separate element if enabled
     if (this.filters.showAIAnalysis && data.analysis) {
       const aiElement = document.createElement('div');
-      aiElement.className = 'ai-analysis';
-      aiElement.innerHTML = `
-        <span class="ai-icon">✨</span>
-        <span class="ai-text">${this.escapeHtml(data.analysis)}</span>
-      `;
+      aiElement.className = 'ai-analysis' + (data.aiThinking ? ' ai-thinking' : '');
+      aiElement.setAttribute('data-log-timestamp', data.timestamp); // For updates
+
+      if (data.aiThinking) {
+        // Show thinking animation
+        aiElement.innerHTML = `
+          <span class="ai-icon thinking-dots">🤔</span>
+          <span class="ai-text thinking-text">AI is analyzing...</span>
+        `;
+      } else {
+        // Show analysis
+        aiElement.innerHTML = `
+          <span class="ai-icon">✨</span>
+          <span class="ai-text">${this.escapeHtml(data.analysis)}</span>
+        `;
+      }
       logEntry.appendChild(aiElement);
     }
 
@@ -981,92 +1026,118 @@ ${this.escapeHtml(this.formatHTML(snapshot.html))}
   }
 
   startVisualCapture() {
-    console.log('[Mosqit] Starting visual capture mode...');
+    console.log('[Mosqit] Starting element capture mode...');
 
     // Check if context is still valid
     try {
       // Get the inspected tab ID
       const tabId = chrome.devtools.inspectedWindow.tabId;
 
-      // First, request background script to inject the Visual Bug Reporter
-      chrome.runtime.sendMessage({
-        type: 'INJECT_VISUAL_BUG_REPORTER',
-        tabId: tabId
-      }, (response) => {
-        if (chrome.runtime.lastError) {
-          const error = chrome.runtime.lastError.message;
-          console.error('[Mosqit] Failed to inject Visual Bug Reporter:', error);
-
-          if (error.includes('context invalidated')) {
-            this.updateCaptureStatus('Extension reloaded. Please close and reopen DevTools.');
-          } else {
-            this.updateCaptureStatus('Error: Failed to inject. Please refresh the page.');
-          }
-          return;
-        }
-
-        if (response?.success) {
-          // The content-bridge should already be injected via manifest
-          // But we need to ensure it's ready to receive messages
-
-          // First, try to inject/re-inject the bridge to ensure it's there
-          console.log('[Mosqit] Ensuring content bridge is ready...');
-
-          // Use the background script to inject the bridge
-          chrome.runtime.sendMessage({
-            type: 'INJECT_CONTENT_BRIDGE',
-            tabId: tabId
-          }, (bridgeResponse) => {
-            if (chrome.runtime.lastError) {
-              console.error('[Mosqit] Failed to inject bridge via background:', chrome.runtime.lastError);
-            }
-
-            // Wait a bit for scripts to initialize
-            setTimeout(() => {
-              console.log('[Mosqit] Attempting to send START_VISUAL_BUG_REPORT to tab:', tabId);
-
-              // Try sending the message
-              chrome.tabs.sendMessage(tabId, {
-                type: 'START_VISUAL_BUG_REPORT'
-              }, (response) => {
-                if (chrome.runtime.lastError) {
-                  console.error('[Mosqit] Failed to start capture:', chrome.runtime.lastError);
-                  console.error('[Mosqit] Error details:', chrome.runtime.lastError.message);
-
-                  // Fallback: Try to start it directly via eval
-                  chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
-                    if (tabs[0] && tabs[0].id === tabId) {
-                      chrome.debugger.attach({tabId: tabId}, '1.0', () => {
-                        if (chrome.runtime.lastError) {
-                          console.error('[Mosqit] Cannot use debugger:', chrome.runtime.lastError);
-                          this.updateCaptureStatus('Error: Please refresh page and try again.');
-                        } else {
-                          // Detach immediately, we just wanted to check
-                          chrome.debugger.detach({tabId: tabId});
-                          this.updateCaptureStatus('Visual capture mode activating...');
-                        }
-                      });
-                    }
-                  });
-                } else if (response?.success) {
-                  console.log('[Mosqit] Visual capture started successfully');
-                  this.updateCaptureStatus('Capture mode active - click an element on the page');
-                } else {
-                  console.log('[Mosqit] Message sent but no proper response:', response);
-                  this.updateCaptureStatus('Visual capture mode activated - hover over elements');
-                }
-              });
-            }, 200);
-          });
-        } else {
-          this.updateCaptureStatus('Error: ' + (response?.error || 'Failed to inject bug reporter.'));
-        }
-      });
+      // Use our native inspector (no CDP needed)
+      this.startNativeInspector(tabId);
     } catch (error) {
       console.error('[Mosqit] Error in startVisualCapture:', error);
       this.updateCaptureStatus('Error: Extension context lost. Please reload DevTools.');
     }
   }
+
+  startNativeInspector(tabId) {
+    console.log('[Mosqit] Starting native inspector for tab:', tabId);
+
+    // Inject the native inspector script
+    chrome.runtime.sendMessage({
+      type: 'INJECT_NATIVE_INSPECTOR',
+      tabId: tabId
+    }, (response) => {
+      if (chrome.runtime.lastError) {
+        console.error('[Mosqit] Failed to inject native inspector:', chrome.runtime.lastError);
+        this.updateCaptureStatus('Error: Failed to inject inspector. Please refresh the page.');
+        return;
+      }
+
+      if (response?.success) {
+        // Wait a bit for the script to initialize
+        setTimeout(() => {
+          // Send start message to native inspector
+          chrome.tabs.sendMessage(tabId, {
+            type: 'START_NATIVE_INSPECT',
+            source: 'mosqit-devtools',
+            options: { multiSelect: false }
+          }, (response) => {
+            if (chrome.runtime.lastError) {
+              console.error('[Mosqit] Failed to start native inspect:', chrome.runtime.lastError);
+              console.error('[Mosqit] Error details:', chrome.runtime.lastError.message);
+
+              // More specific error messages
+              if (chrome.runtime.lastError.message.includes('Receiving end does not exist')) {
+                this.updateCaptureStatus('Error: Content script not loaded. Please refresh the page and try again.');
+              } else if (chrome.runtime.lastError.message.includes('context invalidated')) {
+                this.updateCaptureStatus('Error: Extension was reloaded. Please close and reopen DevTools.');
+              } else {
+                this.updateCaptureStatus('Error: ' + chrome.runtime.lastError.message);
+              }
+
+              // No fallback - native inspector should work
+            } else if (response?.success) {
+              console.log('[Mosqit] Native inspect started successfully');
+              this.updateCaptureStatus('Click an element on the page to capture');
+            } else {
+              console.log('[Mosqit] Native inspect response:', response);
+              this.updateCaptureStatus('Inspect mode activated - click an element');
+            }
+          });
+        }, 500); // Give the script time to initialize
+
+        // Listen for element selection
+        if (!this.nativeInspectorListener) {
+          this.nativeInspectorListener = (event) => {
+            if (event.source !== window) return;
+
+            if (event.data?.source === 'mosqit-native-inspector') {
+              if (event.data.type === 'ELEMENT_SELECTED') {
+                console.log('[Mosqit] Element selected:', event.data.data);
+                this.handleFallbackElementSelection(event.data.data);
+              } else if (event.data.type === 'INSPECTION_COMPLETE') {
+                console.log('[Mosqit] Inspection complete:', event.data.data);
+                this.handleInspectionComplete(event.data.data);
+              }
+            }
+          };
+          window.addEventListener('message', this.nativeInspectorListener);
+        }
+      } else {
+        this.updateCaptureStatus('Error: ' + (response?.error || 'Failed to inject inspector.'));
+      }
+    });
+  }
+
+  handleFallbackElementSelection(elementData) {
+    console.log('[Mosqit] Processing fallback element selection:', elementData);
+
+    // Transform to bug data format
+    const bugData = {
+      element: elementData,
+      screenshot: null,
+      page: {
+        url: window.location.href,
+        title: document.title
+      },
+      timestamp: Date.now()
+    };
+
+    this.handleCapturedBug(bugData);
+  }
+
+  handleInspectionComplete(data) {
+    console.log('[Mosqit] Inspection completed with elements:', data.elements);
+
+    if (data.elements && data.elements.length > 0) {
+      // For now, use the first element
+      // Could be extended to handle multiple elements
+      this.handleFallbackElementSelection(data.elements[0]);
+    }
+  }
+
 
   updateCaptureStatus(message) {
     const captureSection = document.getElementById('vb-capture-section');
@@ -1318,15 +1389,24 @@ ${this.escapeHtml(this.formatHTML(snapshot.html))}
     const recentErrors = this.collectRecentErrors().slice(0, 3); // Only top 3 errors
     const hasErrors = recentErrors.length > 0;
 
-    // Get AI analysis for recent errors
-    const aiAnalysis = await this.getAIAnalysisForErrors(recentErrors);
+    // Get AI analysis - first check if we already have it from content script
+    let aiAnalysis = null;
+
+    // Check if recent errors already have AI analysis from content script
+    if (recentErrors && recentErrors.length > 0 && recentErrors[0].analysis) {
+      console.log('[Mosqit] Using existing AI analysis from content script');
+      aiAnalysis = recentErrors[0].analysis;
+    } else {
+      // Try to generate new analysis (may fail in DevTools context)
+      aiAnalysis = await this.getAIAnalysisForBug(bugData, recentErrors);
+    }
 
     // Follow GitHub best practices for issue structure
     let body = `## Bug Description
 ${bugData.description}
 
 ## Expected Behavior
-${bugData.expected || 'Please describe what you expected to happen instead.'}
+${bugData.expected || 'The element should respond correctly to user interaction.'}
 
 ## Steps to Reproduce
 1. Navigate to \`${bugData.page?.url}\`
@@ -1340,7 +1420,7 @@ ${bugData.description}
 - **URL**: ${bugData.page?.url || window.location.href}
 - **Browser**: ${this.getBrowserInfo(bugData.page?.userAgent)}
 - **Viewport**: ${bugData.page?.viewport?.width}×${bugData.page?.viewport?.height}
-- **Element**: \`${bugData.element?.selector || 'N/A'}\`
+- **Element**: \`${bugData.element?.selector || 'No specific element selected'}\`
 - **Position**: (${Math.round(bugData.element?.position?.x || 0)}, ${Math.round(bugData.element?.position?.y || 0)})
 `;
 
@@ -1373,42 +1453,14 @@ ${stackLines}
     } else {
       body += `
 ## Console Errors
-No console errors captured at the time of this report.
+_No JavaScript errors detected in the console during bug capture._
+
+**Note**: This doesn't mean there's no bug - visual/UX issues often occur without console errors.
 `;
     }
 
-    // Screenshot section
-    if (bugData.screenshot) {
-      // For GitHub, we need to provide instructions since base64 images don't render
-      body += `
-## Screenshot
-<details>
-<summary>Click to see screenshot instructions</summary>
-
-A screenshot was captured for this issue. To include it in GitHub:
-
-### Option 1: Direct Upload (Recommended)
-1. Save the screenshot from Mosqit DevTools panel
-2. Drag and drop the image file into this GitHub issue
-3. GitHub will upload and insert the image automatically
-
-### Option 2: Manual Upload
-1. Right-click the screenshot in Mosqit DevTools
-2. Select "Save image as..."
-3. Click "Attach files" below this issue
-4. Select the saved screenshot file
-
-### Option 3: Use Placeholder
-Replace this line with your uploaded image:
-\`\`\`
-![Screenshot](upload-your-screenshot-here.png)
-\`\`\`
-
-</details>
-
-> **📸 Visual bug captured** - Screenshot available in Mosqit DevTools panel
-`;
-    }
+    // Screenshot is already displayed in the UI above, no need to duplicate it in the issue content
+    // The screenshot will be uploaded and inserted when actually submitting to GitHub
 
     // AI Analysis section
     if (aiAnalysis && aiAnalysis.length > 0) {
@@ -1419,7 +1471,18 @@ ${aiAnalysis}
     } else {
       body += `
 ## AI Analysis
-No specific AI analysis available. Please ensure console errors are present for detailed analysis.
+🤖 **Visual/UX Bug Detected**
+
+While no JavaScript errors were found, the reported issue appears to be related to:
+• Visual rendering or styling
+• User interaction behavior
+• Element positioning or visibility
+
+**Recommended debugging steps:**
+1. Inspect element CSS for display/visibility issues
+2. Check event listeners on the element
+3. Verify responsive design breakpoints
+4. Test browser compatibility
 `;
     }
 
@@ -1515,14 +1578,33 @@ Page title: ${bugData.page?.title || document.title}
   }
 
   async generateAITitle(context) {
+    console.log('[Mosqit] Attempting to generate AI title...');
     try {
       // Build a comprehensive context for AI analysis
-      const contextInfo = this.buildAIContext(context);
+      this.buildAIContext(context);
 
-      // Use Chrome's built-in AI to generate title and description
-      if (typeof window !== 'undefined' && window.ai?.languageModel) {
-        const session = await window.ai.languageModel.create({
-          systemPrompt: `You are a GitHub issue expert. Generate a concise, descriptive bug report title and enhanced description.
+      let session = null;
+      let aiType = null;
+
+      // Try Chrome AI Assistant first
+      if (typeof window !== 'undefined' && window.ai?.assistant) {
+        try {
+          const capabilities = await window.ai.assistant.capabilities();
+          if (capabilities.available === 'readily') {
+            session = await window.ai.assistant.create();
+            aiType = 'assistant';
+            console.log('[Mosqit] Using Assistant for title generation');
+          }
+        } catch (e) {
+          console.log('[Mosqit] Assistant not available for title:', e.message);
+        }
+      }
+
+      // Try Language Model API
+      if (!session && window.ai?.languageModel) {
+        try {
+          session = await window.ai.languageModel.create({
+            systemPrompt: `You are a GitHub issue expert. Generate a concise, descriptive bug report title and enhanced description.
 
 Rules:
 - Title: 50-80 characters, specific and actionable
@@ -1538,9 +1620,20 @@ Example good titles:
 - [Bug]: API timeout causes blank dashboard on load
 
 Context will include: user description, element selector, console errors, page URL, impact level.`
-        });
+          });
+          aiType = 'languageModel';
+          console.log('[Mosqit] Using Language Model for title generation');
+        } catch (e) {
+          console.log('[Mosqit] Language Model not available for title:', e.message);
+        }
+      }
 
-        const prompt = `Generate a GitHub issue title and enhanced description for this bug:
+      if (!session) {
+        console.log('[Mosqit] No AI available for title generation');
+        return this.generateFallbackTitle(context);
+      }
+
+      const prompt = `Generate a GitHub issue title and enhanced description for this bug:
 
 User Description: "${context.userDescription}"
 Expected: "${context.expected || 'Not specified'}"
@@ -1556,21 +1649,24 @@ Return JSON format:
   "enhancedDescription": "Enhanced description with technical details"
 }`;
 
-        const response = await session.prompt(prompt);
-        await session.destroy();
-
-        try {
-          const result = JSON.parse(response);
-          return {
-            title: result.title || this.formatIssueTitle('Visual Bug Report', context),
-            enhancedDescription: result.enhancedDescription || context.userDescription
-          };
-        } catch (parseError) {
-          console.warn('[Mosqit] Failed to parse AI response, using fallback');
+        let response;
+        if (aiType === 'assistant' || aiType === 'languageModel') {
+          response = await session.prompt(prompt);
+          if (session.destroy) await session.destroy();
+        } else {
+          // Writer API doesn't support JSON format well, use fallback
+          console.log('[Mosqit] Writer API not suitable for title generation');
           return this.generateFallbackTitle(context);
         }
-      } else {
-        // Fallback when AI is not available
+
+      try {
+        const result = JSON.parse(response);
+        return {
+          title: result.title || this.formatIssueTitle('Visual Bug Report', context),
+          enhancedDescription: result.enhancedDescription || context.userDescription
+        };
+      } catch {
+        console.warn('[Mosqit] Failed to parse AI response, using fallback');
         return this.generateFallbackTitle(context);
       }
     } catch (error) {
@@ -1710,27 +1806,197 @@ Return JSON format:
   }
 
   formatIssueTitle(rawTitle, bugData) {
+    // Check if title already has [Bug]: prefix
+    if (rawTitle.startsWith('[Bug]:')) {
+      return rawTitle; // Already formatted, return as-is
+    }
+
     // Follow GitHub best practices: [Bug]: Descriptive title
     const description = bugData?.description || rawTitle;
 
     // Extract key information for a descriptive title
-    let title = description.length > 60 ?
-      description.substring(0, 60) + '...' :
+    let title = description.length > 80 ?
+      description.substring(0, 77) + '...' : // Leave room for [Bug]: prefix
       description;
 
     // Clean up title - remove line breaks and extra spaces
     title = title.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
 
-    // Add element context if available
+    // Only add element context if not already mentioned in the title
     const element = bugData?.element?.selector;
-    if (element && element !== 'N/A') {
+    if (element && element !== 'No specific element selected' && !title.toLowerCase().includes(element.toLowerCase())) {
       const shortElement = element.length > 20 ?
         element.substring(0, 20) + '...' :
         element;
-      title += ` (${shortElement})`;
+
+      // Only add if there's room
+      if (title.length + shortElement.length < 70) {
+        title += ` (${shortElement})`;
+      }
     }
 
     return `[Bug]: ${title}`;
+  }
+
+  async getAIAnalysisForBug(bugData, errors) {
+    console.log('[Mosqit] Attempting AI analysis for bug...');
+
+    // Try to analyze the complete bug context, not just errors
+    try {
+      // Check for available AI APIs - try multiple options
+      let session = null;
+      let aiType = null;
+
+      // Try Chrome AI Assistant (Prompt API)
+      if (typeof window !== 'undefined' && window.ai?.assistant) {
+        console.log('[Mosqit] Trying Chrome AI Assistant...');
+        try {
+          const capabilities = await window.ai.assistant.capabilities();
+          if (capabilities.available === 'readily') {
+            session = await window.ai.assistant.create();
+            aiType = 'assistant';
+            console.log('[Mosqit] Using Chrome AI Assistant');
+          }
+        } catch (e) {
+          console.log('[Mosqit] Assistant not available:', e.message);
+        }
+      }
+
+      // Try Language Model API (newer name)
+      if (!session && window.ai?.languageModel) {
+        console.log('[Mosqit] Trying Language Model API...');
+        try {
+          session = await window.ai.languageModel.create({
+            systemPrompt: `You are a debugging expert. Analyze bug reports and provide actionable insights.`
+          });
+          aiType = 'languageModel';
+          console.log('[Mosqit] Using Language Model API');
+        } catch (e) {
+          console.log('[Mosqit] Language Model not available:', e.message);
+        }
+      }
+
+      // Try Writer API as fallback
+      if (!session && window.ai?.writer) {
+        console.log('[Mosqit] Trying Writer API...');
+        try {
+          const capabilities = await window.ai.writer.capabilities();
+          console.log('[Mosqit] Writer capabilities:', capabilities);
+
+          if (capabilities.available === 'readily' || capabilities.available === 'available') {
+            // Store as class property for reuse
+            if (!this.writerSession) {
+              this.writerSession = await window.ai.writer.create({
+                tone: 'neutral',
+                format: 'plain-text',
+                length: 'medium',
+                sharedContext: 'You are Mosqit, a debugging assistant analyzing bug reports.'
+              });
+              console.log('[Mosqit] Created new Writer session');
+            }
+            session = this.writerSession;
+            aiType = 'writer';
+            console.log('[Mosqit] Using Writer API for bug analysis');
+          } else if (capabilities.available === 'after-download') {
+            console.log('[Mosqit] Writer API requires model download');
+          }
+        } catch (e) {
+          console.log('[Mosqit] Writer not available:', e.message);
+        }
+      }
+
+      if (!session) {
+        console.log('[Mosqit] No AI APIs available. Check chrome://flags/#prompt-api-for-gemini-nano');
+        // Continue to fallback analysis below
+      } else {
+        // Build comprehensive context
+        const bugContext = `
+Bug Description: ${bugData.description || 'Visual/interaction issue'}
+Expected Behavior: ${bugData.expected || 'Element should work correctly'}
+Element Selector: ${bugData.element?.selector || 'Not specified'}
+Element Type: ${bugData.element?.tagName || 'Unknown'}
+Element Size: ${bugData.element?.position?.width}x${bugData.element?.position?.height}px
+Page URL: ${bugData.page?.url || 'Unknown'}
+Has Console Errors: ${errors && errors.length > 0 ? 'Yes (' + errors.length + ' errors)' : 'No'}
+${errors && errors.length > 0 ? 'Primary Error: ' + errors[0].message : ''}
+
+Analyze this bug and provide:
+1. Most likely root cause (1-2 sentences)
+2. Specific debugging steps (2-3 bullet points)
+3. Potential fix (1-2 sentences)
+Keep response under 150 words.`;
+
+        let response = null;
+
+        // Use appropriate method based on API type
+        if (aiType === 'assistant' || aiType === 'languageModel') {
+          response = await session.prompt(bugContext);
+        } else if (aiType === 'writer') {
+          response = await session.write(bugContext);
+        }
+
+        if (response && response.length > 10) {
+          console.log('[Mosqit] AI analysis successful');
+          return `🤖 **AI Analysis**\n\n${response.trim()}`;
+        }
+      }
+    } catch (error) {
+      console.error('[Mosqit] AI bug analysis failed:', error);
+    }
+
+    // If AI analysis fails or no AI available, still analyze errors if present
+    if (errors && errors.length > 0) {
+      return this.getAIAnalysisForErrors(errors);
+    }
+
+    // Fallback for visual/UX bugs without errors
+    return this.generateContextualAnalysis(bugData);
+  }
+
+  generateContextualAnalysis(bugData) {
+    const element = bugData.element;
+    let analysis = `🤖 **Automated Analysis**\n\n`;
+
+    // Analyze based on element type and description
+    if (element?.tagName) {
+      const tag = element.tagName.toLowerCase();
+
+      if (['button', 'a', 'input', 'select'].includes(tag)) {
+        analysis += `**Interactive Element Issue Detected**\n`;
+        analysis += `• Element type: ${tag}\n`;
+        analysis += `• Check if element is disabled or has pointer-events: none\n`;
+        analysis += `• Verify click/change event listeners are attached\n`;
+        analysis += `• Inspect z-index and overlapping elements\n`;
+      } else if (['div', 'section', 'article'].includes(tag)) {
+        analysis += `**Layout/Container Issue Detected**\n`;
+        analysis += `• Check CSS display and visibility properties\n`;
+        analysis += `• Verify responsive breakpoints\n`;
+        analysis += `• Inspect flexbox/grid properties\n`;
+      } else if (['img', 'video', 'picture'].includes(tag)) {
+        analysis += `**Media Element Issue Detected**\n`;
+        analysis += `• Verify resource URL is correct\n`;
+        analysis += `• Check loading state and error events\n`;
+        analysis += `• Inspect dimensions and aspect ratio\n`;
+      }
+    }
+
+    // Add description-based insights
+    const desc = (bugData.description || '').toLowerCase();
+    if (desc.includes('click') || desc.includes('tap')) {
+      analysis += `\n**Click/Tap Issue:**\n`;
+      analysis += `• Element might be covered by another element\n`;
+      analysis += `• JavaScript event handler might be missing\n`;
+    } else if (desc.includes('display') || desc.includes('show') || desc.includes('visible')) {
+      analysis += `\n**Visibility Issue:**\n`;
+      analysis += `• Check CSS display, visibility, and opacity\n`;
+      analysis += `• Verify element is in viewport\n`;
+    } else if (desc.includes('size') || desc.includes('responsive')) {
+      analysis += `\n**Sizing/Responsive Issue:**\n`;
+      analysis += `• Check media queries and breakpoints\n`;
+      analysis += `• Verify width/height constraints\n`;
+    }
+
+    return analysis;
   }
 
   async getAIAnalysisForErrors(errors) {
@@ -2065,9 +2331,10 @@ Memory Usage: ${this.getMemoryUsage()}
   async submitToGitHub() {
     console.log('[Mosqit] Preparing GitHub issue submission...');
 
-    // Get the generated issue content and create proper title
-    const rawTitle = document.querySelector('#vb-issue-content h3')?.textContent || 'Visual Bug Report';
-    const issueTitle = this.formatIssueTitle(rawTitle, this.capturedBug);
+    // Get the already AI-generated title (don't reformat it)
+    const issueTitle = document.querySelector('#vb-issue-content h3')?.textContent || '[Bug]: Visual Bug Report';
+
+    // Get the issue body
     const issueBody = document.querySelector('#vb-issue-content pre')?.textContent ||
                       document.querySelector('#vb-issue-content')?.textContent || '';
 
@@ -2167,32 +2434,24 @@ Memory Usage: ${this.getMemoryUsage()}
   }
 
   async getGitHubSettings() {
-    return new Promise((resolve) => {
-      chrome.storage.sync.get(['githubToken', 'githubRepo'], (result) => {
-        resolve({
-          token: result.githubToken || '',
-          repo: result.githubRepo || ''
-        });
-      });
-    });
+    // EPHEMERAL MODE: Session-only GitHub settings (not persisted)
+    return {
+      token: this.githubToken || '',
+      repo: this.githubRepo || ''
+    };
   }
 
   async saveGitHubSettings(token, repo) {
-    return new Promise((resolve) => {
-      chrome.storage.sync.set({
-        githubToken: token,
-        githubRepo: repo
-      }, resolve);
-    });
+    // EPHEMERAL MODE: Session-only GitHub settings (not persisted)
+    this.githubToken = token;
+    this.githubRepo = repo;
   }
 
   async clearGitHubSettings() {
-    return new Promise((resolve) => {
-      chrome.storage.sync.remove(['githubToken', 'githubRepo'], () => {
-        console.log('[Mosqit] GitHub settings cleared');
-        resolve();
-      });
-    });
+    // EPHEMERAL MODE: Session-only GitHub settings (not persisted)
+    this.githubToken = '';
+    this.githubRepo = '';
+    console.log('[Mosqit] GitHub settings cleared (session)');
   }
 
   showGitHubSettings(issueTitle, issueBody, errorMessage = null) {
@@ -2271,6 +2530,88 @@ Memory Usage: ${this.getMemoryUsage()}
     });
   }
 
+  async uploadScreenshotToGitHub(settings, screenshot, issueNumber) {
+    if (!screenshot || !screenshot.startsWith('data:image')) {
+      console.log('[Mosqit] No valid screenshot to upload');
+      return null;
+    }
+
+    const [owner, repo] = settings.repo.split('/');
+
+    // Extract base64 content (remove data:image/png;base64, prefix)
+    const base64Content = screenshot.split(',')[1];
+
+    // Check size limit (GitHub has a 10MB limit for API uploads, but we'll be conservative)
+    const sizeInBytes = (base64Content.length * 3) / 4; // Approximate size
+    const sizeInMB = sizeInBytes / (1024 * 1024);
+    if (sizeInMB > 5) {
+      console.warn(`[Mosqit] Screenshot too large (${sizeInMB.toFixed(2)}MB). Skipping upload.`);
+      this.showToast('⚠️ Screenshot too large for upload (>5MB)', 'warning');
+      return null;
+    }
+
+    // Generate unique filename with timestamp
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const filename = `mosqit-screenshots/issue-${issueNumber || 'draft'}-${timestamp}.png`;
+
+    try {
+      // Upload image to repository
+      const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${filename}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `token ${settings.token}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          message: `Add screenshot for issue #${issueNumber || 'new'}`,
+          content: base64Content,
+          branch: 'main' // You might want to make this configurable
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Return the raw URL for embedding in markdown
+        const rawUrl = data.content.download_url;
+        console.log('[Mosqit] Screenshot uploaded successfully:', rawUrl);
+        return rawUrl;
+      } else {
+        const error = await response.json();
+        console.error('[Mosqit] Failed to upload screenshot:', error);
+
+        // If folder doesn't exist, try to create it first
+        if (error.message && error.message.includes('path')) {
+          console.log('[Mosqit] Attempting to create screenshots folder...');
+          // Try without folder first
+          const simpleFilename = `screenshot-${issueNumber || 'draft'}-${timestamp}.png`;
+          const retryResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${simpleFilename}`, {
+            method: 'PUT',
+            headers: {
+              'Authorization': `token ${settings.token}`,
+              'Accept': 'application/vnd.github.v3+json',
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              message: `Add screenshot for issue #${issueNumber || 'new'}`,
+              content: base64Content,
+              branch: 'main'
+            })
+          });
+
+          if (retryResponse.ok) {
+            const retryData = await retryResponse.json();
+            return retryData.content.download_url;
+          }
+        }
+        return null;
+      }
+    } catch (error) {
+      console.error('[Mosqit] Error uploading screenshot:', error);
+      return null;
+    }
+  }
+
   async createGitHubIssue(settings, title, body) {
     const [owner, repo] = settings.repo.split('/');
 
@@ -2278,14 +2619,52 @@ Memory Usage: ${this.getMemoryUsage()}
       throw new Error('Invalid repository format. Use: owner/repo');
     }
 
+    // First, try to upload the screenshot if available
+    let screenshotUrl = null;
+    if (this.capturedBug?.screenshot) {
+      this.updateProgressMessage('📸 Uploading screenshot...');
+      screenshotUrl = await this.uploadScreenshotToGitHub(settings, this.capturedBug.screenshot);
+
+      if (screenshotUrl) {
+        this.updateProgressMessage('✅ Screenshot uploaded successfully');
+      } else {
+        this.updateProgressMessage('⚠️ Screenshot upload failed, creating issue without image');
+      }
+    }
+
+    // Insert screenshot into body if upload was successful
+    let enhancedBody = body;
+    if (screenshotUrl) {
+      // Find the right place to insert the screenshot (after "Visual Context" or at the beginning)
+      const visualContextIndex = body.indexOf('## Visual Context');
+      if (visualContextIndex !== -1) {
+        // Insert after Visual Context heading
+        const insertPoint = body.indexOf('\n', visualContextIndex) + 1;
+        enhancedBody = body.slice(0, insertPoint) +
+          `\n### Screenshot\n![Bug Screenshot](${screenshotUrl})\n\n` +
+          body.slice(insertPoint);
+      } else {
+        // Insert after bug description
+        const descIndex = body.indexOf('## Expected Behavior');
+        if (descIndex !== -1) {
+          enhancedBody = body.slice(0, descIndex) +
+            `\n## Screenshot\n![Bug Screenshot](${screenshotUrl})\n\n` +
+            body.slice(descIndex);
+        } else {
+          // Fallback: add at the beginning
+          enhancedBody = `## Screenshot\n![Bug Screenshot](${screenshotUrl})\n\n${body}`;
+        }
+      }
+    }
+
     // Truncate body if it exceeds GitHub's limit (65536 characters)
     const MAX_BODY_LENGTH = 65000; // Leave some buffer
-    let truncatedBody = body;
-    if (body.length > MAX_BODY_LENGTH) {
+    let truncatedBody = enhancedBody;
+    if (enhancedBody.length > MAX_BODY_LENGTH) {
       // Keep the most important parts and add truncation notice
       const truncationNotice = '\n\n---\n*[Content truncated due to GitHub\'s 65536 character limit. Full details available in DevTools.]*';
-      truncatedBody = body.substring(0, MAX_BODY_LENGTH - truncationNotice.length) + truncationNotice;
-      console.warn('[Mosqit] Issue body truncated from', body.length, 'to', truncatedBody.length, 'characters');
+      truncatedBody = enhancedBody.substring(0, MAX_BODY_LENGTH - truncationNotice.length) + truncationNotice;
+      console.warn('[Mosqit] Issue body truncated from', enhancedBody.length, 'to', truncatedBody.length, 'characters');
     }
 
     try {

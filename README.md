@@ -105,25 +105,21 @@ if (typeof Writer !== 'undefined') {
 - Angular: Dependency injection errors
 - Next.js: SSR/hydration mismatches
 
-### 5. 💾 **Persistent Storage with IndexedDB**
+### 5. ⚡ **Ephemeral Session Management**
 
-#### Enterprise-Grade Storage System
-- **10,000 Log Capacity**: Automatic rotation for optimal performance
-- **7-Day Retention**: Configurable cleanup policies
-- **Pattern Tracking**: Historical error pattern analysis
-- **Session Management**: Group logs by debugging sessions
-- **Export/Import**: JSON format for sharing and backup
+#### Zero-Persistence Architecture
+- **In-Memory Only**: Logs cleared when DevTools closed (like native console)
+- **100 Log Capacity**: LRU cache for optimal performance
+- **Session-Scoped**: Fresh state every debugging session
+- **Privacy-First**: Zero data left behind on disk
+- **Export Capability**: Copy current session logs to JSON
 
-#### Storage Features
+#### Why Ephemeral?
 ```javascript
-// Auto-cleanup every hour
-// Compression for large logs
-// Cross-session persistence
-const storage = new MosqitStorage({
-  maxLogs: 10000,
-  maxAge: 7 * 24 * 60 * 60 * 1000,
-  cleanupInterval: 60 * 60 * 1000
-});
+// No IndexedDB, no chrome.storage
+// Just like the native console - clean and simple
+// Perfect for sensitive debugging sessions
+// Maximum privacy and performance
 ```
 
 ### 6. 🛠️ **DevTools Panel Integration**
@@ -189,7 +185,6 @@ const storage = new MosqitStorage({
 
 #### Required Permissions
 When installing, Mosqit requests these permissions:
-- **Storage**: Save logs and settings locally
 - **Active Tab**: Inject debugging scripts
 - **DevTools**: Access developer tools panel
 - **All URLs**: Monitor console across all websites
@@ -296,14 +291,13 @@ npm run lint
 ### Extension Components
 1. **Content Script (MAIN World)**: Console override and context capture
 2. **Content Bridge (ISOLATED World)**: Secure message passing
-3. **Background Service Worker**: Log processing and storage
+3. **Background Service Worker**: Log processing (ephemeral)
 4. **DevTools Panel**: Professional debugging interface
-5. **Storage Service**: IndexedDB persistence layer
-6. **AI Service**: Chrome built-in AI integration
+5. **AI Service**: Chrome built-in AI integration
 
 ### Data Flow
 ```
-Console Event → Content Script → Bridge → Background → Storage
+Console Event → Content Script → Bridge → Background (In-Memory Cache)
                      ↓                          ↓
                 AI Analysis              DevTools Panel
 ```
@@ -333,9 +327,9 @@ Console Event → Content Script → Bridge → Background → Storage
 
 ### Service Worker Background
 - Replaces persistent background pages
-- IndexedDB for persistent storage
+- In-memory cache only (ephemeral)
 - Automatic resource conservation
-- Alarm API for periodic tasks
+- Zero persistence for maximum privacy
 
 ### Communication Flow
 ```

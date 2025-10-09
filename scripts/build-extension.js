@@ -654,6 +654,77 @@ if (fs.existsSync(nativeInspector)) {
 
 // CDP Handler removed - not needed anymore
 
+// Step 7: Copy Grammar modules
+console.log('\n📝 Copying Grammar modules...');
+
+// Create grammar directories in dist
+const distGrammarDir = path.join(extensionDir, 'content', 'grammar');
+const distGrammarPanelDir = path.join(extensionDir, 'devtools', 'grammar-panel');
+const distServicesDir = path.join(extensionDir, 'services', 'grammar');
+const distSharedDir = path.join(extensionDir, 'shared');
+
+fs.mkdirSync(distGrammarDir, { recursive: true });
+fs.mkdirSync(distGrammarPanelDir, { recursive: true });
+fs.mkdirSync(distServicesDir, { recursive: true });
+fs.mkdirSync(distSharedDir, { recursive: true });
+
+// Copy grammar content scripts
+const grammarFiles = [
+  'grammar-main.js',
+  'grammar-detector.js',
+  'grammar-engine.js',
+  'grammar-bridge.js',
+  'suggestion-ui.js'
+];
+
+const srcGrammarDir = path.join(srcDir, 'content', 'grammar');
+grammarFiles.forEach(file => {
+  const srcFile = path.join(srcGrammarDir, file);
+  if (fs.existsSync(srcFile)) {
+    fs.copyFileSync(srcFile, path.join(distGrammarDir, file));
+    console.log(`✅ Grammar: ${file} copied`);
+  }
+});
+
+// Copy grammar panel files
+const grammarPanelFiles = [
+  'grammar-panel.html',
+  'grammar-panel.css',
+  'grammar-panel.js',
+  'grammar-devtools.js'
+];
+
+const srcGrammarPanelDir = path.join(srcDir, 'devtools', 'grammar-panel');
+grammarPanelFiles.forEach(file => {
+  const srcFile = path.join(srcGrammarPanelDir, file);
+  if (fs.existsSync(srcFile)) {
+    fs.copyFileSync(srcFile, path.join(distGrammarPanelDir, file));
+    console.log(`✅ Grammar Panel: ${file} copied`);
+  }
+});
+
+// Copy grammar services
+const srcFeatureFlags = path.join(srcDir, 'services', 'grammar', 'feature-flags.js');
+if (fs.existsSync(srcFeatureFlags)) {
+  fs.copyFileSync(srcFeatureFlags, path.join(distServicesDir, 'feature-flags.js'));
+  console.log('✅ Grammar: feature-flags.js copied');
+}
+
+// Copy shared utilities
+const sharedFiles = [
+  'chrome-ai-manager.js',
+  'text-chunker.js'
+];
+
+const srcSharedDir = path.join(srcDir, 'shared');
+sharedFiles.forEach(file => {
+  const srcFile = path.join(srcSharedDir, file);
+  if (fs.existsSync(srcFile)) {
+    fs.copyFileSync(srcFile, path.join(distSharedDir, file));
+    console.log(`✅ Shared: ${file} copied`);
+  }
+});
+
 console.log('\n🎉 Build complete!');
 console.log(`📁 Extension ready at: ${extensionDir}`);
 console.log('\n📋 To install:');

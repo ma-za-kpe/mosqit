@@ -412,16 +412,7 @@ class MosqitDevToolsPanel {
 
     // Clear button
     this.elements.clearBtn.addEventListener('click', () => {
-      this.logs = [];
-      this.filteredLogs = [];
-      this.renderLogs();
-      if (this.port) {
-        try {
-          this.port.postMessage({ type: 'CLEAR_LOGS' });
-        } catch (error) {
-          console.error('[Mosqit Panel] Error clearing logs:', error);
-        }
-      }
+      this.clearLogs();
     });
 
     // Export button
@@ -960,6 +951,19 @@ ${this.escapeHtml(this.formatHTML(snapshot.html))}
     link.setAttribute('href', dataUri);
     link.setAttribute('download', `mosqit-logs-${Date.now()}.json`);
     link.click();
+  }
+
+  clearLogs() {
+    this.logs = [];
+    this.filteredLogs = [];
+    this.renderLogs();
+    if (this.port) {
+      try {
+        this.port.postMessage({ type: 'CLEAR_LOGS' });
+      } catch (error) {
+        console.error('[Mosqit Panel] Error clearing logs:', error);
+      }
+    }
   }
 
   escapeHtml(text) {

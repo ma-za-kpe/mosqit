@@ -12,11 +12,12 @@
   if (DEBUG) console.log('[Mosqit] 🦟 Initializing debugging assistant...');
 
   class MosqitLogger {
-    constructor() {
+    constructor(options = {}) {
       this.DEBUG = DEBUG;
       this.logs = [];
       this.maxLogs = 1000;
       this.aiAvailable = false;
+      this.syncMode = options.syncMode || false; // For testing
 
       // Debug logger helpers
       this._log = (...args) => { if (this.DEBUG) console.log(...args); };
@@ -56,12 +57,15 @@
       this.lastAICallTime = 0;
       this.minAICallInterval = 100; // Minimum 100ms between AI calls
 
+      // Set up console override immediately (synchronously) for testing
+      this.overrideConsoleMethods();
+
+      // Then run async initialization
       this.init();
     }
 
     async init() {
       await this.checkChromeAI();
-      this.overrideConsoleMethods();
       this.setupErrorListener();
       this.setupUserActionTracking();
       this.setupCleanupHandlers();
@@ -325,13 +329,14 @@
     }
 
     overrideConsoleMethods() {
-      const originalConsole = {
+      this.originalConsole = {
         log: console.log.bind(console),
         error: console.error.bind(console),
         warn: console.warn.bind(console),
         info: console.info.bind(console),
         debug: console.debug.bind(console)
       };
+      const originalConsole = this.originalConsole;
 
       ['log', 'error', 'warn', 'info', 'debug'].forEach(method => {
         // CRITICAL FIX: Console methods MUST be synchronous
@@ -400,7 +405,10 @@
           };
 
           // Use requestIdleCallback if available (better), otherwise setTimeout
-          if (typeof requestIdleCallback !== 'undefined') {
+          // In test mode, run synchronously
+          if (this.syncMode) {
+            scheduleWork();
+          } else if (typeof requestIdleCallback !== 'undefined') {
             requestIdleCallback(scheduleWork, { timeout: 1000 });
           } else {
             setTimeout(scheduleWork, 0);

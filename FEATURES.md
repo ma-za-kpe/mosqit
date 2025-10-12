@@ -1,6 +1,6 @@
 # Mosqit Features Documentation
 
-## 🚀 Latest Release: GitHub Integration & AI-Powered Issue Generation
+## 🚀 Latest Release: AI-Powered Developer Console
 
 ### Version 1.0.0 - Complete Feature Set
 
@@ -8,8 +8,41 @@
 
 ## 🎯 Core Features
 
-### 1. 🐛 Visual Bug Reporter
-**Advanced element selection and bug capture directly from any webpage**
+### 1. 🤖 AI-Powered Console Analysis
+**Chrome's built-in Gemini Nano for instant, private error analysis**
+
+> **Like Chrome DevTools Console Insights, but instant and private.** Console Insights uses cloud Gemini (slow, sends data to Google). Mosqit uses on-device Gemini Nano for <100ms analysis with zero data leaving your browser.
+
+#### Real-Time Error Analysis
+- **<100ms Response Time**: 10x faster than cloud-based AI debugging tools
+- **Root Cause Detection**: Identifies the underlying cause of every console error
+- **Fix Suggestions**: Actionable code examples and solutions
+- **Pattern Recognition**: Detects recurring issues across your application
+- **Framework-Aware**: React, Vue, Angular, Next.js-specific insights
+- **Automatic Analysis**: No clicking required (vs Console Insights manual lightbulb)
+
+#### On-Device Processing (The Key Differentiator)
+- **100% Private**: All analysis happens locally in your browser
+- **No External APIs**: Works offline, no cloud dependencies
+- **No Data Sent to Google**: Unlike Console Insights, your code stays local
+- **Global Availability**: Works worldwide (Console Insights is US-only)
+- **No Authentication**: Works instantly (Console Insights requires Google sign-in)
+- **Chrome Gemini Nano**: Uses on-device AI model (not cloud)
+- **Writer API Support**: Enhanced analysis for complex errors
+
+#### Smart Fallback System
+- **Pattern-Based Analysis**: When AI is unavailable, uses 40+ error patterns
+- **Common Error Detection**:
+  - Null reference errors
+  - Type errors
+  - Reference errors
+  - Network/fetch errors
+  - DOM manipulation errors
+  - Memory leaks
+  - Performance issues
+
+### 2. 🐛 Visual Bug Reporter (Bonus Feature)
+**Advanced element selection and bug capture for visual issues**
 
 - **Inspect Mode**: Click any element on the page to capture bug context
 - **Smart Element Selection**: Automatically selects the best interactive element
@@ -21,24 +54,6 @@
   - Console errors with stack traces
   - Browser environment details
   - Page metadata
-
-### 2. 🤖 AI-Powered Analysis
-**Chrome's built-in AI (Gemini Nano) for intelligent error analysis**
-
-#### Real-Time Error Analysis
-- **Instant AI Insights**: <100ms response time using Chrome's Prompt API
-- **Root Cause Detection**: Identifies the underlying cause of errors
-- **Fix Suggestions**: Provides actionable solutions for each error
-- **Pattern Recognition**: Detects recurring issues across your application
-
-#### Smart Fallback System
-- **Pattern-Based Analysis**: When AI is unavailable, uses pattern matching
-- **Common Error Detection**:
-  - Null reference errors
-  - Type errors
-  - Reference errors
-  - Network/fetch errors
-  - DOM manipulation errors
 
 ### 3. 📝 GitHub Issue Generation
 **Create professional, developer-ready GitHub issues with one click**

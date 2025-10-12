@@ -1,7 +1,7 @@
 {
-  "name": "Mosqit - AI-Driven Frontend Debugging Extension",
+  "name": "Mosqit - AI-Powered Developer Console",
   "short_name": "Mosqit",
-  "description": "Buzz through frontend bugs—AI-driven GitHub issues from DevTools. Real-time analysis, pattern detection, framework insights.",
+  "description": "Instant AI console error analysis with on-device Gemini Nano. <100ms insights, 100% private, works offline.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#667eea",

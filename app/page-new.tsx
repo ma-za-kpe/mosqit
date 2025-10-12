@@ -1,7 +1,8 @@
 'use client';
 
-import { useAnalytics, useTrackVisibility, useTrackHover } from '@/hooks/useAnalytics';
+import { useAnalytics, useTrackVisibility } from '@/hooks/useAnalytics';
 import { useEffect } from 'react';
+import Link from 'next/link';
 
 export default function Home() {
   const {
@@ -537,10 +538,10 @@ export default function Home() {
       {/* Navigation */}
       <nav className="navbar">
         <div className="nav-container">
-          <a href="/" className="nav-logo">
+          <Link href="/" className="nav-logo">
             <div className="logo-icon">M</div>
             <span>Mosqit</span>
-          </a>
+          </Link>
 
           <div className="nav-links">
             <a href="#features" className="nav-link">Features</a>
@@ -650,7 +651,7 @@ export default function Home() {
               <div className="feature-icon">AI</div>
               <h3 className="feature-title">AI-Powered Analysis</h3>
               <p className="feature-description">
-                Leverages Chrome's built-in Gemini Nano model for intelligent debugging insights—completely on-device for privacy.
+                Leverages Chrome&apos;s built-in Gemini Nano model for intelligent debugging insights—completely on-device for privacy.
               </p>
             </div>
 
@@ -756,7 +757,7 @@ loads before render`}</div>
                 <span>Mosqit</span>
               </div>
               <p className="footer-tagline">
-                AI-powered debugging for modern frontend development
+                AI-powered debugging for modern web development
               </p>
             </div>
 

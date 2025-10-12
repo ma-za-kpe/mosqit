@@ -196,8 +196,8 @@
         }
       }
 
-      // Check for Writer API - uses window.ai
-      if (!this.aiAvailable && typeof window.ai !== 'undefined' && window.ai?.writer) {
+      // Check for Writer API - uses window.ai (check independently)
+      if (typeof window.ai !== 'undefined' && window.ai?.writer) {
         try {
           const capabilities = await window.ai.writer.capabilities();
           console.info('[Mosqit] Writer API capabilities:', capabilities);
@@ -614,7 +614,20 @@
 
           if (this.promptSession) {
             const errorType = this.getErrorType(metadata.message);
-            const prompt = `Analyze this ${errorType}: ${metadata.message.substring(0, 200)}\nFile: ${metadata.file}\nProvide: 1) Root cause 2) Quick fix`;
+            const framework = metadata.dependencies?.frameworks?.[0] || '';
+            const frameworkContext = framework ? `\nFramework: ${framework}` : '';
+
+            // Enhanced prompt with structure and context
+            const prompt = `Debug this ${errorType}:
+Error: ${metadata.message.substring(0, 150)}
+File: ${metadata.file}:${metadata.line}${frameworkContext}
+
+Provide:
+1. Root cause (one sentence)
+2. Quick fix with code example
+3. What to check next
+
+Keep under 100 words.`;
 
             try {
               const response = await this.promptSession.prompt(prompt);
@@ -650,9 +663,14 @@
         }
 
 
-        // Simplify prompt to avoid AI quality rejection
+        // Enhanced prompt for Writer API (concise but structured)
         const errorCore = metadata.message.substring(0, 150);
-        const prompt = `Fix this error: ${errorCore}\nLocation: ${metadata.file}:${metadata.line}`;
+        const framework = metadata.dependencies?.frameworks?.[0] || '';
+        const frameworkHint = framework ? ` (${framework} app)` : '';
+        const prompt = `Debug error${frameworkHint}: ${errorCore}
+At: ${metadata.file}:${metadata.line}
+
+Explain in 2-3 sentences: What's wrong and how to fix it.`;
 
         const response = await this.writerSession.write(prompt);
 

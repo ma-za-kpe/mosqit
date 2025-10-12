@@ -341,67 +341,68 @@ num.toUppercase();`}</code>
 
         .tutorial-page {
           min-height: 100vh;
-          background: linear-gradient(180deg, #0a0e27 0%, #1a1f3a 100%);
-          color: #ffffff;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: #2d3748;
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
 
         .container {
-          max-width: 900px;
+          max-width: 1200px;
           margin: 0 auto;
-          padding: 0 20px;
+          padding: 20px;
         }
 
         /* Header */
         .tutorial-header {
-          background: rgba(15, 20, 45, 0.95);
-          border-bottom: 2px solid #3b82f6;
-          padding: 30px 0;
-          position: sticky;
-          top: 0;
-          z-index: 100;
-          backdrop-filter: blur(10px);
+          background: rgba(255, 255, 255, 0.95);
+          border-radius: 20px;
+          padding: 40px;
+          margin-bottom: 30px;
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+          text-align: center;
         }
 
         .back-link {
           display: inline-block;
-          color: #60a5fa;
+          color: #667eea;
           text-decoration: none;
           font-size: 14px;
+          font-weight: 600;
           margin-bottom: 15px;
           transition: color 0.2s;
         }
 
         .back-link:hover {
-          color: #93c5fd;
+          color: #5a67d8;
         }
 
         .tutorial-header h1 {
-          font-size: 42px;
-          font-weight: 800;
-          margin-bottom: 8px;
-          background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
+          font-size: 2.5rem;
+          font-weight: 700;
+          margin-bottom: 10px;
+          color: #2d3748;
         }
 
         .subtitle {
-          font-size: 18px;
-          color: #cbd5e1;
+          font-size: 1.2rem;
+          color: #718096;
         }
 
         /* Main Content */
         .tutorial-content {
-          padding: 60px 0;
+          padding: 0;
         }
 
         /* Tutorial Steps */
         .tutorial-step {
+          background: rgba(255, 255, 255, 0.95);
+          border-radius: 20px;
+          padding: 40px;
+          margin-bottom: 30px;
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+          animation: fadeIn 0.6s ease-in;
           display: flex;
           gap: 30px;
-          margin-bottom: 80px;
-          animation: fadeIn 0.6s ease-in;
         }
 
         @keyframes fadeIn {
@@ -419,7 +420,7 @@ num.toUppercase();`}</code>
           flex-shrink: 0;
           width: 60px;
           height: 60px;
-          background: linear-gradient(135deg, #3b82f6, #2563eb);
+          background: linear-gradient(135deg, #667eea, #764ba2);
           border-radius: 50%;
           display: flex;
           align-items: center;
@@ -427,7 +428,7 @@ num.toUppercase();`}</code>
           font-size: 28px;
           font-weight: 800;
           color: white;
-          box-shadow: 0 10px 30px rgba(59, 130, 246, 0.4);
+          box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
         }
 
         .step-content {
@@ -438,20 +439,20 @@ num.toUppercase();`}</code>
           font-size: 32px;
           font-weight: 700;
           margin-bottom: 12px;
-          color: #f1f5f9;
+          color: #2d3748;
         }
 
         .step-description {
           font-size: 18px;
-          color: #cbd5e1;
+          color: #718096;
           margin-bottom: 30px;
           line-height: 1.6;
         }
 
         /* Instruction Box */
         .instruction-box {
-          background: rgba(30, 41, 59, 0.6);
-          border: 2px solid #334155;
+          background: #f7fafc;
+          border: 2px solid #e2e8f0;
           border-radius: 12px;
           padding: 25px;
           margin-bottom: 20px;
@@ -461,7 +462,7 @@ num.toUppercase();`}</code>
           font-size: 20px;
           font-weight: 600;
           margin-bottom: 15px;
-          color: #60a5fa;
+          color: #2d3748;
         }
 
         .instruction-box ol,
@@ -472,28 +473,28 @@ num.toUppercase();`}</code>
         .instruction-box li {
           font-size: 16px;
           line-height: 1.8;
-          color: #e2e8f0;
+          color: #2d3748;
           margin-bottom: 10px;
         }
 
         .instruction-box code {
-          background: #1e293b;
+          background: #e2e8f0;
           padding: 3px 8px;
           border-radius: 4px;
           font-family: 'Monaco', 'Courier New', monospace;
           font-size: 14px;
-          color: #fbbf24;
+          color: #667eea;
         }
 
         .instruction-box strong {
-          color: #60a5fa;
+          color: #667eea;
           font-weight: 600;
         }
 
         /* Code Box */
         .code-box {
-          background: #0f172a;
-          border: 2px solid #1e293b;
+          background: #2d3748;
+          border: 2px solid #4a5568;
           border-radius: 12px;
           padding: 20px;
           margin-bottom: 20px;
@@ -504,7 +505,7 @@ num.toUppercase();`}</code>
           font-size: 16px;
           font-weight: 600;
           margin-bottom: 12px;
-          color: #94a3b8;
+          color: #e2e8f0;
         }
 
         .code-box pre {
@@ -524,7 +525,7 @@ num.toUppercase();`}</code>
           position: absolute;
           top: 15px;
           right: 15px;
-          background: #3b82f6;
+          background: #667eea;
           color: white;
           border: none;
           padding: 8px 16px;
@@ -533,16 +534,17 @@ num.toUppercase();`}</code>
           font-weight: 600;
           cursor: pointer;
           transition: all 0.2s;
+          box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
         }
 
         .copy-btn:hover {
-          background: #2563eb;
+          background: #5a67d8;
           transform: translateY(-2px);
         }
 
         /* Tip Box */
         .tip-box {
-          background: rgba(34, 197, 94, 0.1);
+          background: #f0fff4;
           border: 2px solid #22c55e;
           border-radius: 12px;
           padding: 18px 22px;
@@ -550,13 +552,13 @@ num.toUppercase();`}</code>
         }
 
         .tip-box strong {
-          color: #22c55e;
+          color: #16a34a;
           font-weight: 600;
         }
 
         /* Warning Box */
         .warning-box {
-          background: rgba(251, 191, 36, 0.1);
+          background: #fffbeb;
           border: 2px solid #fbbf24;
           border-radius: 12px;
           padding: 18px 22px;
@@ -564,7 +566,7 @@ num.toUppercase();`}</code>
         }
 
         .warning-box strong {
-          color: #fbbf24;
+          color: #d97706;
           font-weight: 600;
         }
 
@@ -577,17 +579,18 @@ num.toUppercase();`}</code>
         }
 
         .feature-card {
-          background: rgba(30, 41, 59, 0.6);
-          border: 2px solid #334155;
-          border-radius: 12px;
+          background: white;
+          border: 2px solid #e2e8f0;
+          border-radius: 15px;
           padding: 25px;
           transition: all 0.3s;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
         }
 
         .feature-card:hover {
-          border-color: #3b82f6;
+          border-color: #667eea;
           transform: translateY(-5px);
-          box-shadow: 0 10px 30px rgba(59, 130, 246, 0.2);
+          box-shadow: 0 15px 40px rgba(102, 126, 234, 0.2);
         }
 
         .feature-icon {
@@ -599,12 +602,12 @@ num.toUppercase();`}</code>
           font-size: 18px;
           font-weight: 600;
           margin-bottom: 10px;
-          color: #f1f5f9;
+          color: #2d3748;
         }
 
         .feature-card p {
           font-size: 14px;
-          color: #cbd5e1;
+          color: #718096;
           line-height: 1.6;
         }
 
@@ -617,36 +620,37 @@ num.toUppercase();`}</code>
         }
 
         .tip-item {
-          background: rgba(30, 41, 59, 0.6);
-          border-left: 4px solid #3b82f6;
+          background: #f7fafc;
+          border-left: 4px solid #667eea;
           padding: 18px 22px;
           border-radius: 8px;
           font-size: 16px;
-          color: #e2e8f0;
+          color: #2d3748;
           line-height: 1.6;
         }
 
         .tip-item strong {
-          color: #60a5fa;
+          color: #667eea;
           font-weight: 600;
         }
 
         .tip-item code {
-          background: #1e293b;
+          background: #e2e8f0;
           padding: 2px 6px;
           border-radius: 4px;
           font-family: 'Monaco', monospace;
           font-size: 13px;
-          color: #fbbf24;
+          color: #667eea;
         }
 
         /* Quick Reference */
         .quick-reference {
-          background: rgba(15, 20, 45, 0.8);
-          border: 2px solid #3b82f6;
-          border-radius: 16px;
+          background: rgba(255, 255, 255, 0.95);
+          border: 2px solid #667eea;
+          border-radius: 20px;
           padding: 40px;
-          margin-bottom: 60px;
+          margin-bottom: 30px;
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
         }
 
         .quick-reference h2 {
@@ -654,7 +658,7 @@ num.toUppercase();`}</code>
           font-weight: 700;
           margin-bottom: 30px;
           text-align: center;
-          color: #f1f5f9;
+          color: #2d3748;
         }
 
         .reference-grid {
@@ -664,7 +668,7 @@ num.toUppercase();`}</code>
         }
 
         .reference-card {
-          background: rgba(30, 41, 59, 0.6);
+          background: #f7fafc;
           border-radius: 12px;
           padding: 25px;
         }
@@ -673,7 +677,7 @@ num.toUppercase();`}</code>
           font-size: 20px;
           font-weight: 600;
           margin-bottom: 15px;
-          color: #60a5fa;
+          color: #2d3748;
         }
 
         .reference-card ul {
@@ -682,48 +686,53 @@ num.toUppercase();`}</code>
 
         .reference-card li {
           font-size: 15px;
-          color: #cbd5e1;
+          color: #718096;
           margin-bottom: 10px;
           line-height: 1.6;
         }
 
         .reference-card a {
-          color: #60a5fa;
+          color: #667eea;
           text-decoration: none;
           transition: color 0.2s;
+          font-weight: 600;
         }
 
         .reference-card a:hover {
-          color: #93c5fd;
+          color: #5a67d8;
           text-decoration: underline;
         }
 
         .reference-card kbd {
-          background: #1e293b;
+          background: #e2e8f0;
           padding: 4px 8px;
           border-radius: 4px;
           font-family: 'Monaco', monospace;
           font-size: 13px;
-          color: #fbbf24;
-          border: 1px solid #334155;
+          color: #2d3748;
+          border: 1px solid #cbd5e1;
         }
 
         /* Footer */
         .tutorial-footer {
+          background: rgba(255, 255, 255, 0.95);
+          border-radius: 20px;
+          padding: 60px 40px;
+          margin-bottom: 30px;
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
           text-align: center;
-          padding: 60px 0;
         }
 
         .tutorial-footer h2 {
           font-size: 36px;
           font-weight: 700;
           margin-bottom: 15px;
-          color: #f1f5f9;
+          color: #2d3748;
         }
 
         .tutorial-footer p {
           font-size: 18px;
-          color: #cbd5e1;
+          color: #718096;
           margin-bottom: 30px;
         }
 
@@ -736,35 +745,38 @@ num.toUppercase();`}</code>
 
         .btn {
           display: inline-block;
-          padding: 14px 32px;
-          border-radius: 8px;
-          font-size: 16px;
+          padding: 15px 30px;
+          border-radius: 30px;
+          font-size: 1.1rem;
           font-weight: 600;
           text-decoration: none;
           transition: all 0.3s;
           cursor: pointer;
+          border: none;
         }
 
         .btn-primary {
-          background: linear-gradient(135deg, #3b82f6, #2563eb);
+          background: #667eea;
           color: white;
-          box-shadow: 0 10px 30px rgba(59, 130, 246, 0.3);
+          box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
         }
 
         .btn-primary:hover {
-          transform: translateY(-3px);
-          box-shadow: 0 15px 40px rgba(59, 130, 246, 0.4);
+          background: #5a67d8;
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
         }
 
         .btn-secondary {
-          background: rgba(30, 41, 59, 0.8);
-          color: #60a5fa;
-          border: 2px solid #3b82f6;
+          background: white;
+          color: #667eea;
+          border: 2px solid #667eea;
         }
 
         .btn-secondary:hover {
-          background: rgba(59, 130, 246, 0.2);
-          transform: translateY(-3px);
+          background: #667eea;
+          color: white;
+          transform: translateY(-2px);
         }
 
         /* Responsive */

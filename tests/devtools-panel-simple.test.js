@@ -150,14 +150,8 @@ describe('Mosqit DevTools Panel - Simplified', () => {
     const MosqitDevToolsPanel = require('../src/extension/devtools/panel.js');
     panel = new MosqitDevToolsPanel();
 
-    // Mock the elements needed for addLog
-    panel.elements = {
-      logsList: {
-        innerHTML: '',
-        appendChild: jest.fn(),
-        querySelector: jest.fn(() => null)
-      }
-    };
+    // Mock the appendLogToUI method to avoid DOM manipulation
+    panel.appendLogToUI = jest.fn();
 
     // Get the message handler
     const messageHandler = mockPort.onMessage.addListener.mock.calls[0][0];
@@ -168,6 +162,8 @@ describe('Mosqit DevTools Panel - Simplified', () => {
 
     // Check log was added to logs array
     expect(panel.logs.length).toBeGreaterThan(0);
+    // Check that appendLogToUI was called
+    expect(panel.appendLogToUI).toHaveBeenCalled();
   });
 
   test('should clear logs', () => {

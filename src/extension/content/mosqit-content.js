@@ -12,11 +12,12 @@
   if (DEBUG) console.log('[Mosqit] 🦟 Initializing debugging assistant...');
 
   class MosqitLogger {
-    constructor() {
+    constructor(options = {}) {
       this.DEBUG = DEBUG;
       this.logs = [];
       this.maxLogs = 1000;
       this.aiAvailable = false;
+      this.syncMode = options.syncMode || false; // For testing
 
       // Debug logger helpers
       this._log = (...args) => { if (this.DEBUG) console.log(...args); };
@@ -56,12 +57,15 @@
       this.lastAICallTime = 0;
       this.minAICallInterval = 100; // Minimum 100ms between AI calls
 
+      // Set up console override immediately (synchronously) for testing
+      this.overrideConsoleMethods();
+
+      // Then run async initialization
       this.init();
     }
 
     async init() {
       await this.checkChromeAI();
-      this.overrideConsoleMethods();
       this.setupErrorListener();
       this.setupUserActionTracking();
       this.setupCleanupHandlers();
@@ -325,13 +329,14 @@
     }
 
     overrideConsoleMethods() {
-      const originalConsole = {
+      this.originalConsole = {
         log: console.log.bind(console),
         error: console.error.bind(console),
         warn: console.warn.bind(console),
         info: console.info.bind(console),
         debug: console.debug.bind(console)
       };
+      const originalConsole = this.originalConsole;
 
       ['log', 'error', 'warn', 'info', 'debug'].forEach(method => {
         // CRITICAL FIX: Console methods MUST be synchronous
@@ -387,7 +392,7 @@
                     metadata.aiThinking = false;
                     this.updateLog(metadata);
                   }
-                }).catch(err => {
+                }).catch(_err => {
                   // AI analysis failed, keep pattern analysis
                   metadata.aiThinking = false;
                   this.updateLog(metadata);
@@ -400,7 +405,10 @@
           };
 
           // Use requestIdleCallback if available (better), otherwise setTimeout
-          if (typeof requestIdleCallback !== 'undefined') {
+          // In test mode, run synchronously
+          if (this.syncMode) {
+            scheduleWork();
+          } else if (typeof requestIdleCallback !== 'undefined') {
             requestIdleCallback(scheduleWork, { timeout: 1000 });
           } else {
             setTimeout(scheduleWork, 0);
@@ -971,21 +979,10 @@
       let sanitized = html.substring(0, 3000);
 
       // ENHANCED SANITIZATION for GDPR/HIPAA compliance
+      // Patterns include: password, ssn, credit card, bank account, api keys, tokens,
+      // pin, security codes, DOB, passport, license, medical data, etc.
 
-      // 1. Sensitive field attributes (name, id, class patterns)
-      const sensitiveFieldPatterns = [
-        /password/gi, /passwd/gi, /pwd/gi,
-        /ssn/gi, /social[_-]?security/gi,
-        /credit[_-]?card/gi, /card[_-]?number/gi, /cvv/gi, /cvc/gi,
-        /bank[_-]?account/gi, /routing[_-]?number/gi,
-        /api[_-]?key/gi, /secret/gi, /token/gi, /auth/gi,
-        /pin/gi, /security[_-]?code/gi,
-        /dob/gi, /birth[_-]?date/gi,
-        /passport/gi, /license/gi, /driver/gi,
-        /medical/gi, /diagnosis/gi, /patient/gi, /health/gi
-      ];
-
-      // 2. Replace value attributes in sensitive fields
+      // 1. Replace value attributes in sensitive fields
       sanitized = sanitized.replace(/(<input[^>]*(password|ssn|credit|card|cvv|pin|secret|token|key)[^>]*)value="[^"]*"/gi, '$1value="[REDACTED]"');
       sanitized = sanitized.replace(/(<input[^>]*(password|ssn|credit|card|cvv|pin|secret|token|key)[^>]*)value='[^']*'/gi, "$1value='[REDACTED]'");
 
@@ -1398,8 +1395,6 @@
     }
 
     setupErrorListener() {
-      const originalConsole = console.info.bind(console);
-
       window.addEventListener('error', async (event) => {
         // Extract function name from stack if available
         const stack = event.error?.stack || '';
@@ -1469,7 +1464,7 @@
               metadata.aiThinking = false;
               this.updateLog(metadata);
             }
-          }).catch(err => {
+          }).catch(_err => {
             metadata.aiThinking = false;
             this.updateLog(metadata);
           });
@@ -1477,8 +1472,6 @@
       });
 
       window.addEventListener('unhandledrejection', async (event) => {
-        const originalConsole = console.info.bind(console);
-
         // Extract more context from the promise rejection
         const errorMessage = event.reason?.message || event.reason || 'Unknown promise rejection';
         const stack = event.reason?.stack || new Error().stack || '';
@@ -1564,7 +1557,7 @@
               metadata.aiThinking = false;
               this.updateLog(metadata);
             }
-          }).catch(err => {
+          }).catch(_err => {
             metadata.aiThinking = false;
             this.updateLog(metadata);
           });

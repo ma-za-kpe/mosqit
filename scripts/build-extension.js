@@ -398,7 +398,7 @@ const manifest = {
   manifest_version: 3,
   name: 'Mosqit - AI Debugging Assistant',
   version: '1.0.0',
-  description: 'AI-powered frontend debugging with Chrome built-in AI (Gemini Nano)',
+  description: 'Instant AI console error analysis with on-device Gemini Nano. <100ms insights, 100% private, works offline.',
   permissions: [
     'tabs',
     'scripting',

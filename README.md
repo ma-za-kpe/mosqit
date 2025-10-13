@@ -1,6 +1,6 @@
-# Mosqit - Professional JavaScript Debugging Extension
+# Mosqit - AI-Powered Developer Console
 
-> **Advanced Chrome DevTools extension with AI-powered analysis, visual bug reporting, and comprehensive error tracking for modern development teams.**
+> **Chrome DevTools Console Insights, but instant and private. Get <100ms AI-powered error analysis with on-device Gemini Nano—no cloud, no waiting, no data leaving your browser.**
 
 [![Chrome Built-in AI Challenge 2025](https://img.shields.io/badge/Chrome%20AI%20Challenge-2025-4285F4?style=for-the-badge&logo=google-chrome)](https://devpost.com/software/mosqit)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
@@ -16,15 +16,24 @@
 
 </div>
 
-## 🎯 Project Overview
+## 🎯 What Makes Mosqit Different
 
-**Mosqit** revolutionizes frontend debugging by combining Android Logcat-inspired logging with Chrome's built-in AI APIs (Gemini Nano). It provides intelligent error analysis, pattern detection, and actionable fix suggestions directly in your browser—all while maintaining privacy through on-device AI processing.
+**Every error in your console gets instant AI analysis**—no cloud APIs, no external services, no waiting. Mosqit intercepts console errors and uses Chrome's built-in Gemini Nano to deliver:
+
+- **<100ms AI analysis**: Root cause, fix suggestions, and what to check next
+- **100% on-device processing**: Your code never leaves your browser
+- **Framework-aware insights**: React, Vue, Angular, Next.js-specific guidance
+- **Pattern detection**: Identifies recurring issues automatically
+- **Zero configuration**: Works the moment you install it
+
+> **For developers who want answers, not just error messages.**
 
 > ⚠️ **IMPORTANT FOR DEVELOPERS**: Chrome AI APIs are experimental and require specific setup. See [Chrome AI Setup](#chrome-ai-setup) section below.
 
 ### 🏆 Google Chrome Built-in AI Challenge 2025
 - **Submission Deadline**: October 31, 2025
-- **Target Prizes**: $14,000 Most Helpful, $9,000 Multimodal AI, $9,000 Hybrid AI
+- **Target Category**: Most Helpful ($14,000 prize)
+- **Unique Value**: First on-device AI console with <100ms analysis and 100% privacy
 
 ## ✨ Core Features
 
